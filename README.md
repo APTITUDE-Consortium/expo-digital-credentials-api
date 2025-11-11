@@ -32,7 +32,9 @@
 </p>
 
 <p align="center">
-  <a href="#getting-started">Getting started</a> 
+  <a href="#getting-started">Getting Started</a> 
+  &nbsp;|&nbsp;
+  <a href="#usage">Usage</a> 
   &nbsp;|&nbsp;
   <a href="#contributing">Contributing</a> 
   &nbsp;|&nbsp;
@@ -103,7 +105,7 @@ You can now import `@animo-id/expo-digital-credentials-api` in your application.
 
 ### Registering Credentials
 
-To make Android aware of the credentials availble in your wallet, you need to register the credentials. Every time the credentials in your application changes, you should call this method again.
+To make Android aware of the credentials available in your wallet, you need to register the credentials. Every time the credentials in your application changes, you should call this method again.
 
 When registering credentials you can also choose the matcher that is used. When registering credentials with a new matcher the old matcher will not be used anymore (the latest register call always overrides previous calls). The supported matchers are:
 
@@ -256,7 +258,7 @@ export function MyCustomComponent({
 
 If you're using Expo Router, the root application is automatically loaded and executed, even if a custom activity is launched in React Native, and thus your main application logic will be executed (although not visible).
 
-To prevent this from happening, you can create a small wrapper that returns `null` when the current activity is the get credential activitiy using the `isGetCredentialActivity` method. Make sure to only call this method once your app component is loaded, to prevent the app loading to get stuck.
+To prevent this from happening, you can create a small wrapper that returns `null` when the current activity is the get credential activity using the `isGetCredentialActivity` method. Make sure to only call this method once your app component is loaded, to prevent the app loading to get stuck.
 
 ```ts
 import { isGetCredentialActivity } from "@animo-id/expo-digital-credentials-api";
@@ -271,8 +273,8 @@ export default function App() {
 
 ## Contributing
 
-Is there something you'd like to fix or add? Great, we love community contributions! To get involved, please follow our [contribution guidelines](./CONTRIBUTING.md).
+Is there something you'd like to fix or add? Great, we love community contributions! To get involved, please follow our [contribution guidelines](https://github.com/animo/.github/blob/main/CONTRIBUTING.md).
 
 ## License
 
-Expo Digital Credentials Api is licensed under the [Apache 2.0](./LICENSE) license.
+This repository is licensed under the [Apache 2.0](./LICENSE) license.
