@@ -13,7 +13,9 @@ import androidx.credentials.registry.provider.RegisterCredentialsRequest
 import androidx.credentials.registry.provider.RegistryManager
 import androidx.credentials.registry.provider.selectedEntryId
 import expo.modules.core.interfaces.SingletonModule
+import java.io.ByteArrayInputStream
 import org.json.JSONObject
+import java.util.zip.GZIPInputStream
 
 enum class Matcher(val value: String) {
 
@@ -32,7 +34,12 @@ enum class Matcher(val value: String) {
      *
      * Current version: https://github.com/UbiqueInnovation/oid4vp-wasm-matcher/releases/tag/v0.1.0
      */
-    UBIQUE("ubique-matcher.wasm");
+    UBIQUE("ubique-matcher.wasm"),
+
+    /**
+     * The matcher is the aptitude consortium dcapi-matcher build.
+     */
+    APTITUDE_CONSORTIUM("aptitude-consortium-matcher.wasm");
 
     override fun toString(): String {
         return value
@@ -43,10 +50,14 @@ enum class Matcher(val value: String) {
                 when (value.lowercase()) {
                     "cmwallet" -> CMWALLET
                     "ubique" -> UBIQUE
+                    "aptitude-consortium" -> APTITUDE_CONSORTIUM
                     else -> throw IllegalArgumentException("Unknown matcher value: $value")
                 }
     }
 }
+
+private const val PROTOCOL_OPENID4VP = "openid4vp"
+private const val PROTOCOL_OPENID4VCI = "openid4vci"
 
 @OptIn(ExperimentalDigitalCredentialApi::class)
 object DigitalCredentialsApiSingleton : SingletonModule {
@@ -74,7 +85,7 @@ object DigitalCredentialsApiSingleton : SingletonModule {
                         object :
                                 RegisterCredentialsRequest(
                                         "com.credman.IdentityCredential",
-                                        "openid4vp",
+                                        PROTOCOL_OPENID4VP,
                                         credentialBytes,
                                         matcherInstance
                                 ) {}
@@ -86,11 +97,36 @@ object DigitalCredentialsApiSingleton : SingletonModule {
                         object :
                                 RegisterCredentialsRequest(
                                         DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
-                                        "openid4vp",
+                                        PROTOCOL_OPENID4VP,
                                         credentialBytes,
                                         matcherInstance
                                 ) {}
         )
+
+        if (matcher == Matcher.APTITUDE_CONSORTIUM) {
+            // OpenID4VCI registration for issuance flows (aptitude matcher only).
+            registryManager.registerCredentials(
+                    request =
+                            object :
+                                    RegisterCredentialsRequest(
+                                            "com.credman.IdentityCredential",
+                                            PROTOCOL_OPENID4VCI,
+                                            credentialBytes,
+                                            matcherInstance
+                                    ) {}
+            )
+
+            registryManager.registerCredentials(
+                    request =
+                            object :
+                                    RegisterCredentialsRequest(
+                                            DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
+                                            PROTOCOL_OPENID4VCI,
+                                            credentialBytes,
+                                            matcherInstance
+                                    ) {}
+            )
+        }
     }
 
     fun getResponseIntent(response: String): Intent {
@@ -172,10 +208,13 @@ object DigitalCredentialsApiSingleton : SingletonModule {
             loadAsset(context, "allowedApps.json").decodeToString()
 
     private fun loadAsset(context: Context, fileName: String): ByteArray {
-        val stream = context.assets.open(fileName)
-        val data = ByteArray(stream.available())
-        stream.read(data)
-        stream.close()
-        return data
+        val data = context.assets.open(fileName).use { it.readBytes() }
+        return maybeDecompressGzip(data)
+    }
+
+    private fun maybeDecompressGzip(data: ByteArray): ByteArray {
+        if (data.size < 2) return data
+        if (data[0] != 0x1f.toByte() || data[1] != 0x8b.toByte()) return data
+        return GZIPInputStream(ByteArrayInputStream(data)).use { it.readBytes() }
     }
 }

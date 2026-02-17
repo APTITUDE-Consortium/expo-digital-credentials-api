@@ -1,4 +1,9 @@
 import { decodeBase64, encodeBase64 } from './util'
+import type {
+  AptitudeConsortiumConfig,
+  AptitudeConsortiumCredentialConfig,
+  AptitudeConsortiumIcon,
+} from './DigitalCredentialsApi.types'
 
 export interface CredentialDisplayData {
   // TODO: also align more with OID4VCI input?
@@ -203,6 +208,57 @@ export function getEncodedCredentialsBase64(items: CredentialItem[], { debug }: 
   }
 
   return encodeBase64(result)
+}
+
+function normalizeAptitudeIcon(icon: AptitudeConsortiumIcon): string | number[] {
+  if (icon instanceof Uint8Array) return Array.from(icon)
+
+  if (typeof icon === 'string') {
+    if (icon.startsWith('data:')) {
+      const commaIndex = icon.indexOf(',')
+      return commaIndex >= 0 ? icon.slice(commaIndex + 1) : icon
+    }
+    return icon
+  }
+
+  return icon
+}
+
+function normalizeAptitudeCredential(credential: AptitudeConsortiumCredentialConfig): AptitudeConsortiumCredentialConfig {
+  if (!credential.icon) return credential
+
+  return {
+    ...credential,
+    icon: normalizeAptitudeIcon(credential.icon),
+  }
+}
+
+function normalizeAptitudeConsortiumConfig(
+  config: AptitudeConsortiumConfig,
+  debug?: boolean
+): AptitudeConsortiumConfig {
+  const normalized: AptitudeConsortiumConfig = {
+    ...config,
+  }
+
+  if (debug && !normalized.log_level) {
+    normalized.log_level = 'debug'
+  }
+
+  if (normalized.credentials) {
+    normalized.credentials = normalized.credentials.map(normalizeAptitudeCredential)
+  }
+
+  return normalized
+}
+
+export function getEncodedAptitudeConsortiumConfigBase64(
+  config: AptitudeConsortiumConfig,
+  { debug }: { debug?: boolean } = {}
+): string {
+  const textEncoder = new TextEncoder()
+  const normalized = normalizeAptitudeConsortiumConfig(config, debug)
+  return encodeBase64(textEncoder.encode(JSON.stringify(normalized)))
 }
 
 type EncodedValue = string | number | boolean | undefined
