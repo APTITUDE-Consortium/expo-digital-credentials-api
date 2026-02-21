@@ -1,17 +1,22 @@
-import { isCreateCredentialActivity, isGetCredentialActivity } from '@animo-id/expo-digital-credentials-api'
 import {
+  encodeCredentials as encodeCmWalletCredentials,
   registerCredentials as registerCmWallet,
   type CredentialItem,
   type SdJwtDcClaims,
 } from '@animo-id/expo-digital-credentials-api-cmwallet'
-import { registerCreationOptions as registerCmWalletIssuance } from '@animo-id/expo-digital-credentials-api-cmwallet-issuance'
+import {
+  encodeIssuanceCreationOptions,
+  registerCreationOptions as registerCmWalletIssuance,
+} from '@animo-id/expo-digital-credentials-api-cmwallet-issuance'
 import {
   encodeAptitudeConsortiumConfig,
   registerCredentials as registerAptitude,
-  type AptitudeConsortiumConfig,
 } from '@animo-id/expo-digital-credentials-api-aptitude-consortium'
-import { registerCredentials as registerUbique } from '@animo-id/expo-digital-credentials-api-ubique'
-import { useMemo } from 'react'
+import {
+  encodeCredentials as encodeUbiqueCredentials,
+  registerCredentials as registerUbique,
+} from '@animo-id/expo-digital-credentials-api-ubique'
+import { normalizeAptitudeConsortiumConfig, type AptitudeConsortiumConfigInput } from './matcherEncoding'
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
 export default function App() {
@@ -568,7 +573,7 @@ export default function App() {
     },
   ]
 
-  const aptitudeConfig: AptitudeConsortiumConfig = {
+  const aptitudeConfig: AptitudeConsortiumConfigInput = {
     default_id_prefix: 'cred-',
     openid4vp: {
       enabled: true,
@@ -659,28 +664,32 @@ export default function App() {
 
   const register = (matcher: 'ubique' | 'cmwallet' | 'aptitude-consortium') => {
     if (matcher === 'aptitude-consortium') {
-      const encoded = encodeAptitudeConsortiumConfig(aptitudeConfig, { debug: true })
-      const decoded = new TextDecoder().decode(encoded)
+      const normalized = normalizeAptitudeConsortiumConfig(aptitudeConfig, { debug: true })
+      const credentialBytes = encodeAptitudeConsortiumConfig(normalized)
+      const decoded = new TextDecoder().decode(credentialBytes)
       console.log('Aptitude matcher payload (json)', decoded)
-      return registerAptitude({ aptitudeConsortiumConfig: aptitudeConfig, debug: true })
+      return registerAptitude({ credentialBytes })
         .then(() => console.log('success', matcher))
         .catch((error) => console.error('error', error))
     }
 
     const registerFn = matcher === 'ubique' ? registerUbique : registerCmWallet
-    return registerFn({ credentials: legacyCredentials, debug: true })
+    const encode = matcher === 'ubique' ? encodeUbiqueCredentials : encodeCmWalletCredentials
+    const credentialBytes = encode(legacyCredentials, { debug: true })
+    return registerFn({ credentialBytes })
       .then(() => console.log('success', matcher))
       .catch((error) => console.error('error', error))
   }
 
   const registerIssuance = () => {
-    return registerCmWalletIssuance({
+    const creationOptions = encodeIssuanceCreationOptions({
       display: {
         title: 'CMWallet',
         subtitle: 'Save your document to CMWallet',
         iconDataUrl: mdlIconDataUrl,
       },
     })
+    return registerCmWalletIssuance({ creationOptions })
       .then(() => console.log('success', 'cmwallet-issuance'))
       .catch((error) => console.error('error', error))
   }

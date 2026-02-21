@@ -48,16 +48,46 @@ export interface DigitalCredentialsRequest {
         }>
       }
 
-  selectedEntry: {
+  /**
+   * Legacy selection info derived from selectedEntryId. Prefer `selection` when available.
+   */
+  selectedEntry?: {
     /**
      * The credential id as provided to the register credentials method
      */
     credentialId: string
 
     /**
-     * The index of the provider that was selected
+     * The index of the provider/request that was selected
      */
     providerIndex: number
+  }
+
+  /**
+   * Detailed selection info (supports multiple credential selections).
+   */
+  selection?: {
+    /**
+     * Index of the request/provider that was selected.
+     */
+    requestIdx: number
+
+    creds: Array<{
+      /**
+       * Credential entry id chosen by the matcher/provider.
+       */
+      entryId: string
+
+      /**
+       * DCQL credential id, if provided by the matcher.
+       */
+      dcqlId?: string
+
+      /**
+       * Selected claim paths (DCQL), if provided by the matcher.
+       */
+      matchedClaimPaths?: Array<Array<string | number | null>>
+    }>
   }
 }
 
@@ -81,7 +111,14 @@ export interface DigitalCredentialsCreateRequest {
    * Request payload (if provided by the system).
    */
   request: {
+    /**
+     * Protocol identifier for the create request.
+     */
     protocol: string
+
+    /**
+     * Protocol-specific payload (raw JSON).
+     */
     data: unknown
   } | null
 }
@@ -146,20 +183,40 @@ export interface RegisterCreationOptionsOptions {
 }
 
 export interface SendResponseOptions {
+  /**
+   * Serialized response to return to the requesting app.
+   */
   response: string
 }
 
 export interface SendErrorResponseOptions {
+  /**
+   * Error message to return to the requesting app.
+   */
   errorMessage: string
 }
 
 export interface SendCreateResponseOptions {
+  /**
+   * Serialized create response to return to the requesting app.
+   */
   response: string
+
+  /**
+   * Optional credential type for the response.
+   */
   type?: string
+
+  /**
+   * Optional entry id of the newly created credential.
+   */
   newEntryId?: string
 }
 
 export interface SendCreateErrorResponseOptions {
+  /**
+   * Error message to return to the requesting app.
+   */
   errorMessage: string
 }
 
@@ -172,109 +229,15 @@ export interface SetAllowedAppsOptions {
 }
 
 export type OnRequestEventPayload = {
+  /**
+   * Raw JSON request payload as a string.
+   */
   request: string
 }
 
 export type DigitalCredentialsApiModuleEvents = {
+  /**
+   * Fired when a request is received (not currently emitted by the native module).
+   */
   onRequest: (params: OnRequestEventPayload) => void
-}
-
-export type ClaimsPathPointer = Array<string | number | null>
-
-export type AptitudeConsortiumLogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace'
-
-export interface AptitudeConsortiumOpenId4VpConfig {
-  enabled?: boolean
-  allow_dcql?: boolean
-  allow_dcql_scope?: boolean
-  allow_transaction_data?: boolean
-  allow_signed_requests?: boolean
-  allow_response_mode_jwt?: boolean
-}
-
-export interface AptitudeConsortiumOpenId4VciConfig {
-  enabled?: boolean
-  allow_credential_offer?: boolean
-  allow_credential_offer_uri?: boolean
-  allow_authorization_code?: boolean
-  allow_pre_authorized_code?: boolean
-  allow_tx_code?: boolean
-  allow_authorization_details?: boolean
-  allow_scope?: boolean
-}
-
-export type AptitudeConsortiumCredentialSetOptionMode = 'all_satisfiable' | 'first_satisfiable_only'
-
-export type AptitudeConsortiumOptionalCredentialSetsMode =
-  | 'prefer_present'
-  | 'prefer_absent'
-  | 'always_present_if_satisfiable'
-
-export interface AptitudeConsortiumPlanOptions {
-  credential_set_option_mode?: AptitudeConsortiumCredentialSetOptionMode
-  optional_credential_sets_mode?: AptitudeConsortiumOptionalCredentialSetsMode
-}
-
-export interface AptitudeConsortiumLocalizedLabel {
-  locale: string
-  label: string
-  description?: string
-}
-
-export interface AptitudeConsortiumClaimConfig {
-  path: ClaimsPathPointer
-  display?: AptitudeConsortiumLocalizedLabel[]
-}
-
-export interface AptitudeConsortiumLocalizedValue {
-  locale: string
-  value: string
-}
-
-export interface AptitudeConsortiumUiLabelConfig {
-  key: string
-  values?: AptitudeConsortiumLocalizedValue[]
-}
-
-export interface AptitudeConsortiumTransactionDataConfig {
-  type: string
-  subtype?: string
-  claims?: AptitudeConsortiumClaimConfig[]
-  ui_labels?: AptitudeConsortiumUiLabelConfig[]
-  schema: unknown
-}
-
-export type AptitudeConsortiumIcon = Uint8Array | number[] | string
-
-export interface AptitudeConsortiumFieldConfig {
-  path: ClaimsPathPointer
-  display_name: string
-  display_value?: string
-}
-
-export interface AptitudeConsortiumCredentialConfig {
-  id?: string
-  format: string
-  title?: string
-  subtitle?: string
-  disclaimer?: string
-  warning?: string
-  fields?: AptitudeConsortiumFieldConfig[]
-  metadata?: unknown
-  icon?: AptitudeConsortiumIcon
-  vcts?: string[]
-  doctype?: string
-  holder_binding?: boolean
-  claims?: unknown
-  protocols?: string[]
-  transaction_data_types?: AptitudeConsortiumTransactionDataConfig[]
-}
-
-export interface AptitudeConsortiumConfig {
-  default_id_prefix?: string
-  openid4vp?: AptitudeConsortiumOpenId4VpConfig
-  openid4vci?: AptitudeConsortiumOpenId4VciConfig
-  dcql?: AptitudeConsortiumPlanOptions
-  log_level?: AptitudeConsortiumLogLevel
-  credentials?: AptitudeConsortiumCredentialConfig[]
 }

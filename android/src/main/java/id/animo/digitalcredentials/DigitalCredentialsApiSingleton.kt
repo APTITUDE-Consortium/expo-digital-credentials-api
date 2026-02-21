@@ -20,10 +20,13 @@ import androidx.credentials.provider.ProviderCreateCredentialRequest
 import androidx.credentials.registry.provider.RegisterCreationOptionsRequest
 import androidx.credentials.registry.provider.RegisterCredentialsRequest
 import androidx.credentials.registry.provider.RegistryManager
+import androidx.credentials.registry.provider.SelectedCredentialSet
 import androidx.credentials.registry.provider.selectedEntryId
+import androidx.credentials.registry.provider.selectedCredentialSet
 import expo.modules.core.interfaces.SingletonModule
 import java.io.ByteArrayInputStream
 import java.util.zip.GZIPInputStream
+import org.json.JSONArray
 import org.json.JSONObject
 
 private const val PROTOCOL_OPENID4VP = "openid4vp"
@@ -178,12 +181,29 @@ object DigitalCredentialsApiSingleton : SingletonModule {
         val selectedEntryId = request.selectedEntryId
         if (!selectedEntryId.isNullOrBlank()) {
             val selectedEntry = JSONObject(selectedEntryId)
+            val providerIndex =
+                    if (selectedEntry.has("req_idx")) selectedEntry.getInt("req_idx") else selectedEntry.getInt("provider_idx")
+            val credentialId =
+                    if (selectedEntry.has("entry_id")) selectedEntry.getString("entry_id") else selectedEntry.getString("id")
             requestReturn.put(
                     "selectedEntry",
                     JSONObject()
-                            .put("providerIndex", selectedEntry.getInt("provider_idx"))
-                            .put("credentialId", selectedEntry.getString("id"))
+                            .put("providerIndex", providerIndex)
+                            .put("credentialId", credentialId)
             )
+        }
+
+        val selection =
+                if (request.selectedCredentialSet != null) {
+                    selectionFromSelectedSet(request.selectedCredentialSet!!)
+                } else if (!selectedEntryId.isNullOrBlank()) {
+                    selectionFromEntryIdJson(selectedEntryId)
+                } else {
+                    null
+                }
+
+        if (selection != null) {
+            requestReturn.put("selection", selection)
         }
 
         return requestReturn.toString()
@@ -295,5 +315,60 @@ object DigitalCredentialsApiSingleton : SingletonModule {
         if (data.size < 2) return data
         if (data[0] != 0x1f.toByte() || data[1] != 0x8b.toByte()) return data
         return GZIPInputStream(ByteArrayInputStream(data)).use { it.readBytes() }
+    }
+
+    private fun selectionFromSelectedSet(selectionInfo: SelectedCredentialSet): JSONObject? {
+        val requestIdx =
+                try {
+                    selectionInfo.credentialSetId
+                            .substringBefore(";")
+                            .substringAfter("req:")
+                            .toInt()
+                } catch (_: Exception) {
+                    return null
+                }
+
+        val creds = JSONArray()
+        for (credential in selectionInfo.credentials) {
+            val entryId = credential.credentialId
+            val credJson = JSONObject().put("entryId", entryId)
+
+            val metadataStr = credential.metadata
+            if (!metadataStr.isNullOrBlank()) {
+                val metadata = JSONObject(metadataStr)
+                if (metadata.has("dcql_cred_id")) {
+                    credJson.put("dcqlId", metadata.getString("dcql_cred_id"))
+                }
+                if (metadata.has("claims")) {
+                    val claims = metadata.optJSONArray("claims")
+                    if (claims != null) credJson.put("matchedClaimPaths", claims)
+                }
+            }
+
+            creds.put(credJson)
+        }
+
+        return JSONObject().put("requestIdx", requestIdx).put("creds", creds)
+    }
+
+    private fun selectionFromEntryIdJson(entryId: String): JSONObject? {
+        return try {
+            val entryIdJson = JSONObject(entryId)
+            val requestIdx =
+                    if (entryIdJson.has("req_idx")) entryIdJson.getInt("req_idx") else entryIdJson.getInt("provider_idx")
+            val selectedId =
+                    if (entryIdJson.has("entry_id")) entryIdJson.getString("entry_id") else entryIdJson.getString("id")
+
+            val credJson = JSONObject().put("entryId", selectedId)
+            if (entryIdJson.has("dcql_cred_id")) {
+                credJson.put("dcqlId", entryIdJson.getString("dcql_cred_id"))
+            }
+
+            JSONObject()
+                    .put("requestIdx", requestIdx)
+                    .put("creds", JSONArray().put(credJson))
+        } catch (_: Exception) {
+            null
+        }
     }
 }

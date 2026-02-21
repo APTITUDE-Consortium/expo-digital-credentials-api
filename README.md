@@ -160,64 +160,12 @@ Choose the matcher package that fits your needs. Registering credentials for a m
   - Supports showing claim values
 
 ```tsx
-import { registerCredentials } from "@animo-id/expo-digital-credentials-api-cmwallet";
+import { encodeCredentials, registerCredentials } from "@animo-id/expo-digital-credentials-api-cmwallet";
 
+// Build credentialBytes from the matcher schema
+const credentialBytes = encodeCredentials(credentials, { debug: true });
 await registerCredentials({
-  credentials: [
-    {
-      id: "1",
-      display: {
-        title: "Drivers License",
-        subtitle: "Issued by Utopia",
-        claims: [
-          {
-            path: ["org.iso.18013.5.1", "family_name"],
-            displayName: "Family Name",
-          },
-        ],
-        iconDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAaUlEQVR4nOzPUQkAIQDA0OMwpxksY19D+PEQ9hJsY6/5vezXAbca0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0E4AAAD//7vSAeZjAN7dAAAAAElFTkSuQmCC",
-      },
-      credential: {
-        doctype: "org.iso.18013.5.1.mDL",
-        format: "mso_mdoc",
-        namespaces: {
-          "org.iso.18013.5.1": {
-            family_name: "Glastra",
-          },
-        },
-      },
-    },
-    {
-      id: "2",
-      display: {
-        title: "PID",
-        subtitle: "Issued by Utopia",
-        claims: [
-          {
-            path: ["first_name"],
-            displayName: "First Name",
-          },
-          {
-            path: ["address", "city"],
-            displayName: "Resident City",
-          },
-        ],
-        iconDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAaUlEQVR4nOzPUQkAIQDA0OMwpxksY19D+PEQ9hJsY6/5vezXAbca0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0BrQGtAa0E4AAAD//7vSAeZjAN7dAAAAAElFTkSuQmCC",
-      },
-      credential: {
-        vct: "eu.europa.ec.eudi.pid.1",
-        format: "dc+sd-jwt",
-        claims: {
-          first_name: "Timo",
-          address: {
-            city: "Somewhere",
-          },
-        },
-      },
-    },
-  ],
+  credentialBytes,
 });
 ```
 
@@ -226,9 +174,10 @@ await registerCredentials({
 To allow OpenID4VCI issuance, register creation options with the CMWallet issuance matcher:
 
 ```tsx
-import { registerCreationOptions } from "@animo-id/expo-digital-credentials-api-cmwallet-issuance";
+import { encodeIssuanceCreationOptions, registerCreationOptions } from "@animo-id/expo-digital-credentials-api-cmwallet-issuance";
 
-await registerCreationOptions({
+// Build creationOptions bytes from the matcher schema
+const creationOptions = encodeIssuanceCreationOptions({
   display: {
     title: "My Wallet",
     subtitle: "Save your document",
@@ -236,7 +185,180 @@ await registerCreationOptions({
   },
   issuerAllowlist: ["https://issuer.example"],
 });
+await registerCreationOptions({
+  creationOptions,
+});
 ```
+
+### Request Payloads
+
+#### Get Credential Request (JS)
+
+```ts
+type DigitalCredentialsRequest = {
+  // Web origin (for browsers) or null if unavailable
+  origin: string
+  // Calling app package name (e.g., com.android.chrome)
+  packageName: string
+  // Raw request JSON from the system (either `providers` or `requests`)
+  request:
+    | {
+        providers: Array<{
+          protocol: "openid4vp" | "openid4vci"
+          request: string
+        }>
+        requests?: never
+      }
+    | {
+        requests: Array<{
+          protocol: "openid4vp" | "openid4vci"
+          data: string
+        }>
+        providers?: never
+      }
+
+  /**
+   * Legacy selection info derived from selectedEntryId.
+   * Prefer `selection` when present.
+   */
+  selectedEntry?: {
+    providerIndex: number
+    credentialId: string
+  }
+
+  /**
+   * Detailed selection (supports multi‑credential selection).
+   * Mirrors the CMWallet selection semantics.
+   */
+  selection?: {
+    requestIdx: number
+    creds: Array<{
+      entryId: string
+      dcqlId?: string
+      matchedClaimPaths?: Array<Array<string | number | null>>
+    }>
+  }
+}
+```
+
+Notes:
+- `selection` is populated from `selectedCredentialSet` when available, and falls back to `selectedEntryId`.
+- `matchedClaimPaths` are matcher-provided claim path pointers (DCQL), if present in metadata.
+
+#### Create Credential Request (JS)
+
+```ts
+type DigitalCredentialsCreateRequest = {
+  origin: string | null
+  packageName: string
+  type: string
+  // Raw request JSON from the system, if provided
+  request: object | null
+}
+```
+
+### Matcher Registry Encodings
+
+#### CMWallet / Ubique matcher registry
+
+Binary layout:
+- 4-byte little‑endian JSON offset
+- concatenated icon bytes (may be empty)
+- UTF‑8 JSON payload
+
+JSON shape:
+```ts
+type MatcherRegistryJson = {
+  // Only supported in the Ubique matcher
+  debug?: boolean
+  credentials: {
+    mso_mdoc: Record<
+      string,
+      Array<{
+        id: string
+        title: string
+        subtitle?: string
+        icon?: { start: number; length: number } | null
+        paths: Record<
+          string,
+          Record<string, { value?: string | number | boolean; display: string }>
+        >
+      }>
+    >
+    "dc+sd-jwt": Record<
+      string,
+      Array<{
+        id: string
+        title: string
+        subtitle?: string
+        icon?: { start: number; length: number } | null
+        paths: Record<
+          string,
+          { value?: string | number | boolean; display: string } | MatcherRegistryJson["credentials"]["dc+sd-jwt"][string][number]["paths"]
+        >
+      }>
+    >
+  }
+}
+```
+
+#### CMWallet Issuance (OpenID4VCI) creation options
+
+Binary layout:
+- 4-byte little‑endian JSON offset
+- icon bytes (may be empty)
+- UTF‑8 JSON payload
+
+JSON shape:
+```ts
+type IssuanceCreationOptionsJson = {
+  display: {
+    title: string
+    subtitle?: string
+    icon?: { start: number; length: number } | null
+  }
+  capabilities?: Record<string, Record<string, never>>
+}
+```
+
+#### Aptitude Consortium matcher
+
+JSON payload (UTF‑8), no binary header:
+```ts
+type AptitudeConsortiumConfig = {
+  default_id_prefix?: string
+  openid4vp?: { /* ... */ }
+  openid4vci?: { /* ... */ }
+  dcql?: { /* ... */ }
+  log_level?: "error" | "warn" | "info" | "debug" | "trace"
+  credentials?: Array<{
+    id?: string
+    format: string
+    title?: string
+    subtitle?: string
+    disclaimer?: string
+    warning?: string
+    fields?: Array<{ path: Array<string | number | null>; display_name: string; display_value?: string }>
+    metadata?: unknown
+    icon?: string | number[]
+    vcts?: string[]
+    doctype?: string
+    holder_binding?: boolean
+    claims?: unknown
+    protocols?: string[]
+    transaction_data_types?: Array<{
+      type: string
+      subtype?: string
+      claims?: Array<{ path: Array<string | number | null>; display?: Array<{ locale: string; label: string; description?: string }> }>
+      ui_labels?: Array<{ key: string; values?: Array<{ locale: string; value: string }> }>
+      schema: unknown
+    }>
+  }>
+}
+```
+
+Notes:
+- `icon` must be a base64 string (no data URL prefix) or a `number[]`. If your source is a data URL or `Uint8Array`, normalize it in your app before encoding.
 
 ### Handling Credential Request
 
