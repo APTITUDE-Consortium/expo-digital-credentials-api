@@ -15,11 +15,6 @@ import { useMemo } from 'react'
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
 export default function App() {
-  const isDcApi = useMemo(() => isGetCredentialActivity() || isCreateCredentialActivity(), [])
-  if (isDcApi) {
-    console.log('Not rendering main application due to DC API')
-    return null
-  }
 
   const mdlIconDataUrl =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAUCAYAAACaq43EAAAC1klEQVR4nI1W267bNhCc2aVU5MQIkPz/f/U9SNO0fUzPObAl7uRhSZqSXaCCDZEi5bnshebvX7/LIJgk5h0mwAlRfS44OdYpQQJISBIAQBKI41wSSOaz9hySbiAsx4AAQMy19p3HfT4u3ocdLJ9zGlLz1r4rhc4ABIQTOAmRCImDxPTjIEAylTUVByJPLgNQEgygjuqUQFJnTEoQ+rxDE0QoQDOaFwAJrKiKvTJVMz+NESWUuzqCzYw+z7EONndiwz4J5bcVMOd4EgLkNKuq2zZMzrTIydHqYe9jXLvVmEIBAL6utGWhGVuyJGUzwIrDSuEz403gUPeo9kyGUygAmtPXBXUP/Pj71X7+u/GPP1/9/brzxz/vXmvQisPcU27nTbSsxlHhWe1MZqglYMsCErhed9YqXS6L3q8VRiICut6CJEEznlN7WH2296GMWtaOuRnoBghwN72+bfz67advW/D7X2/29r6zuI2CZ6+Edj8oxmQlB9ApFD07yHvNEnAj9z3kRkiC+5QL815kJUzJxQfwjnev37au5+EoxeBOuVvbkxU/Vf3Ya/8V22cdayYw2iABBVCcWlfXtgdLMZoB2R36y9lSOwk7AxzBOIBCIiZXICgiIAHLYrh8XMOMWFdHcerjhyVtx71vqwWaQDaQ1u1bbHvvJtSiO1vLQU6o+w73Fe6GL58/4PXtpm2ruryUeHlZBEWSr/VOt13lAMDuXra4Dth4agYPkKxVda90M5DAp8uqT5elRggRDTQCihBT3L1zHeydlKW1UxafD492r7ebolaAQA0xojX4BFVs29MToxz6LtnSQVm3yg6ORoTM5OjOoLm1324yM1jL5pCgWhW19gOmvzBETIfEHL/79WyNbRZZLkmmVtRak/b/PBp7Sxy537P44Ww+kZlDg3vC9vM5/wgc/hj0xZ7V7TdmdaCpZ/oMNrfQvtLsS/k6HqOYlQuthUK/AGc8L7OljAm1AAAAAElFTkSuQmCC'
