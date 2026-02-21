@@ -10,9 +10,9 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
-class DigitalCredentialsApiActivity : ReactActivity() {
+class DigitalCredentialsApiCreateCredentialActivity : ReactActivity() {
 
-    override fun getMainComponentName(): String = "DigitalCredentialsApiActivity"
+    override fun getMainComponentName(): String = "DigitalCredentialsApiCreateCredentialActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +36,7 @@ class DigitalCredentialsApiActivity : ReactActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        Log.d("DigitalCredentialsApi", "onNewIntent")
+        Log.d("DigitalCredentialsApi", "onNewIntent (create)")
         setIntent(intent)
 
         // Force a re-render of the React component
@@ -53,7 +53,7 @@ class DigitalCredentialsApiActivity : ReactActivity() {
 
             override fun getLaunchOptions() =
                     Bundle().apply {
-                        putString("request", DigitalCredentialsApiSingleton.getRequest(context, intent))
+                        putString("request", DigitalCredentialsApiSingleton.getCreateRequest(context, intent))
                     }
         }
     }

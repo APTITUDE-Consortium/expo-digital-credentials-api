@@ -1,9 +1,13 @@
 export {
   DigitalCredentialsRequest,
+  DigitalCredentialsCreateRequest,
+  RegisterCreationOptionsOptions,
   RegisterCredentialsOptions,
   SendErrorResponseOptions,
   SendResponseOptions,
-  DigitalCredentialsApiMatcher,
+  SendCreateErrorResponseOptions,
+  SendCreateResponseOptions,
+  SetAllowedAppsOptions,
   AptitudeConsortiumConfig,
   AptitudeConsortiumCredentialConfig,
   AptitudeConsortiumFieldConfig,
@@ -15,8 +19,13 @@ export {
   ClaimsPathPointer,
 } from './DigitalCredentialsApi.types'
 export {
+  registerCreationOptions,
   registerCredentials,
   sendErrorResponse,
   sendResponse,
+  sendCreateErrorResponse,
+  sendCreateResponse,
+  setAllowedApps,
   isGetCredentialActivity,
+  isCreateCredentialActivity,
 } from './api'

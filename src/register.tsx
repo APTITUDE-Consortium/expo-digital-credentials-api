@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { AppRegistry, View } from 'react-native'
-import type { DigitalCredentialsRequest } from './DigitalCredentialsApi.types'
+import type { DigitalCredentialsCreateRequest, DigitalCredentialsRequest } from './DigitalCredentialsApi.types'
 import { ensureAndroid } from './util'
 
 function WrappingComponent({ children }: PropsWithChildren) {
@@ -23,9 +23,11 @@ function WrappingComponent({ children }: PropsWithChildren) {
 }
 
 /**
- * The component that will be rendered for an incoming request
+ * The component that will be rendered for an incoming get-credential request.
  */
-export default function register(Component: React.FC<{ request: DigitalCredentialsRequest }>) {
+export default function registerGetCredentialComponent(
+  Component: React.FC<{ request: DigitalCredentialsRequest }>
+) {
   ensureAndroid()
 
   AppRegistry.registerComponent('DigitalCredentialsApiActivity', () => ({ request }: { request: string }) => (
@@ -33,4 +35,22 @@ export default function register(Component: React.FC<{ request: DigitalCredentia
       <Component request={JSON.parse(request)} />
     </WrappingComponent>
   ))
+}
+
+/**
+ * The component that will be rendered for an incoming create-credential request.
+ */
+export function registerCreateCredentialComponent(
+  Component: React.FC<{ request: DigitalCredentialsCreateRequest }>
+) {
+  ensureAndroid()
+
+  AppRegistry.registerComponent(
+    'DigitalCredentialsApiCreateCredentialActivity',
+    () => ({ request }: { request: string }) => (
+      <WrappingComponent>
+        <Component request={JSON.parse(request)} />
+      </WrappingComponent>
+    )
+  )
 }

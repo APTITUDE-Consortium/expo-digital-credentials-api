@@ -1,12 +1,6 @@
-import { decodeBase64, encodeBase64 } from './util'
-import type {
-  AptitudeConsortiumConfig,
-  AptitudeConsortiumCredentialConfig,
-  AptitudeConsortiumIcon,
-} from './DigitalCredentialsApi.types'
+import { decodeBase64, stripImageDataUrl } from './util'
 
 export interface CredentialDisplayData {
-  // TODO: also align more with OID4VCI input?
   title: string
   subtitle?: string
 
@@ -44,8 +38,6 @@ export interface CredentialConfigurationMdoc extends CredentialConfiguration {
    * to do matching for those claims
    */
   namespaces: Record<string, Record<string, string | number | boolean | null>>
-
-  // TODO: support claim name mapping
 }
 
 export type SdJwtDcClaims = {
@@ -92,8 +84,7 @@ function recursivelyMapSdJwtDc(
   return result
 }
 
-// TODO: allow registering custom credential byte structures for non-standard matchers
-export function getEncodedCredentialsBase64(items: CredentialItem[], { debug }: { debug?: boolean }): string {
+export function encodeCredentials(items: CredentialItem[], { debug }: { debug?: boolean } = {}): Uint8Array {
   const textEncoder = new TextEncoder()
   const chunks: Uint8Array[] = []
 
@@ -101,9 +92,7 @@ export function getEncodedCredentialsBase64(items: CredentialItem[], { debug }: 
   const iconRecord: Record<string, IconEntry> = {}
   for (const item of items) {
     const iconBytes = item.display.iconDataUrl
-      ? decodeBase64(
-          item.display.iconDataUrl.replace('data:image/png;base64,', '').replace('data:image/jpg;base64,', '')
-        )
+      ? decodeBase64(stripImageDataUrl(item.display.iconDataUrl))
       : new Uint8Array(0)
     iconRecord[item.id] = { iconValue: iconBytes, iconOffset: 0 }
   }
@@ -207,58 +196,7 @@ export function getEncodedCredentialsBase64(items: CredentialItem[], { debug }: 
     offset += chunk.length
   }
 
-  return encodeBase64(result)
-}
-
-function normalizeAptitudeIcon(icon: AptitudeConsortiumIcon): string | number[] {
-  if (icon instanceof Uint8Array) return Array.from(icon)
-
-  if (typeof icon === 'string') {
-    if (icon.startsWith('data:')) {
-      const commaIndex = icon.indexOf(',')
-      return commaIndex >= 0 ? icon.slice(commaIndex + 1) : icon
-    }
-    return icon
-  }
-
-  return icon
-}
-
-function normalizeAptitudeCredential(credential: AptitudeConsortiumCredentialConfig): AptitudeConsortiumCredentialConfig {
-  if (!credential.icon) return credential
-
-  return {
-    ...credential,
-    icon: normalizeAptitudeIcon(credential.icon),
-  }
-}
-
-function normalizeAptitudeConsortiumConfig(
-  config: AptitudeConsortiumConfig,
-  debug?: boolean
-): AptitudeConsortiumConfig {
-  const normalized: AptitudeConsortiumConfig = {
-    ...config,
-  }
-
-  if (debug && !normalized.log_level) {
-    normalized.log_level = 'debug'
-  }
-
-  if (normalized.credentials) {
-    normalized.credentials = normalized.credentials.map(normalizeAptitudeCredential)
-  }
-
-  return normalized
-}
-
-export function getEncodedAptitudeConsortiumConfigBase64(
-  config: AptitudeConsortiumConfig,
-  { debug }: { debug?: boolean } = {}
-): string {
-  const textEncoder = new TextEncoder()
-  const normalized = normalizeAptitudeConsortiumConfig(config, debug)
-  return encodeBase64(textEncoder.encode(JSON.stringify(normalized)))
+  return result
 }
 
 type EncodedValue = string | number | boolean | undefined
@@ -274,12 +212,7 @@ interface EncodedCredentialJsonCommon {
 }
 
 type EncodedSdJwtDcCredentialJsonPath = {
-  // top-level key
-  [key: string]:
-    | // end-value (everything except object, so also arrays)
-    { value?: EncodedValue; display: string }
-    // object
-    | EncodedSdJwtDcCredentialJsonPath
+  [key: string]: { value?: EncodedValue; display: string } | EncodedSdJwtDcCredentialJsonPath
 }
 
 interface EncodedJson {

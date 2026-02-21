@@ -1,5 +1,3 @@
-import type { DigitalCredentialsApiMatcher } from './DigitalCredentialsApiModule'
-import type { CredentialItem } from './encodeCredentials'
 
 export interface DigitalCredentialsRequest {
   /**
@@ -63,38 +61,89 @@ export interface DigitalCredentialsRequest {
   }
 }
 
+export interface DigitalCredentialsCreateRequest {
+  /**
+   * e.g. `https://digital-credentials.dev`
+   */
+  origin: string | null
+
+  /**
+   * e.g. `com.android.chrome`
+   */
+  packageName: string
+
+  /**
+   * Credential type for the request.
+   */
+  type: string
+
+  /**
+   * Request payload (if provided by the system).
+   */
+  request: {
+    protocol: string
+    data: unknown
+  } | null
+}
+
 export interface RegisterCredentialsOptions {
   /**
-   * Credentials encoded for the CMWallet/Ubique matchers.
-   *
-   * When using the aptitude consortium matcher this is ignored.
+   * Raw credential registry bytes to pass to the matcher.
    */
-  credentials?: CredentialItem[]
+  credentialBytes: Uint8Array
 
   /**
-   * The matcher to use. Avaialbe options are:
-   * - `cmwallet` (default)
-   * - `ubique`
-   * - `aptitude-consortium`
+   * Matcher wasm bytes to use for selection.
    */
-  matcher?: DigitalCredentialsApiMatcher
+  matcherBytes: Uint8Array
 
   /**
-   * Whether to enable debug mode in the matcher.
-   *
-   * This is supported for the `ubique` matcher and maps to `log_level=debug` for the
-   * aptitude consortium matcher when no explicit log level is provided.
+   * Protocol identifier to register against. Defaults to `openid4vp` if omitted.
    */
-  debug?: boolean
+  protocol?: string
 
   /**
-   * Configuration for the aptitude consortium matcher.
-   *
-   * Only used when `matcher` is set to `aptitude-consortium`.
+   * Credential type to register. Defaults to Android's Digital Credential type if omitted.
    */
-  aptitudeConsortiumConfig?: AptitudeConsortiumConfig
+  type?: string
+
+  /**
+   * Whether to register the legacy CredMan type for backwards compatibility.
+   * Defaults to true.
+   */
+  registerCompatType?: boolean
 }
-export type { DigitalCredentialsApiMatcher }
+
+export interface RegisterCreationOptionsOptions {
+  /**
+   * Raw creation options bytes to pass to the matcher.
+   */
+  creationOptions: Uint8Array
+
+  /**
+   * Matcher wasm bytes to use for issuance selection.
+   */
+  matcherBytes: Uint8Array
+
+  /**
+   * Credential type to register. Defaults to Android's Digital Credential type if omitted.
+   */
+  type?: string
+
+  /**
+   * Identifier for the creation options registration.
+   *
+   * Defaults to `openid4vci`.
+   */
+  id?: string
+
+  /**
+   * Optional intent action for creation options.
+   *
+   * Defaults to empty string.
+   */
+  intentAction?: string
+}
 
 export interface SendResponseOptions {
   response: string
@@ -102,6 +151,24 @@ export interface SendResponseOptions {
 
 export interface SendErrorResponseOptions {
   errorMessage: string
+}
+
+export interface SendCreateResponseOptions {
+  response: string
+  type?: string
+  newEntryId?: string
+}
+
+export interface SendCreateErrorResponseOptions {
+  errorMessage: string
+}
+
+export interface SetAllowedAppsOptions {
+  /**
+   * JSON payload describing allowed apps for origin verification.
+   * Pass null or an empty string to clear the override and use the bundled default.
+   */
+  allowedAppsJson?: string | null
 }
 
 export type OnRequestEventPayload = {

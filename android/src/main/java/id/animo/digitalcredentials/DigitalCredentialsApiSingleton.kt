@@ -2,62 +2,33 @@ package id.animo.digitalcredentials
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import android.service.credentials.CredentialProviderService
 import android.util.Log
+import androidx.credentials.CreateCredentialRequest
+import androidx.credentials.CreateCustomCredentialResponse
 import androidx.credentials.DigitalCredential
 import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetDigitalCredentialOption
+import androidx.credentials.exceptions.CreateCredentialUnknownException
 import androidx.credentials.exceptions.GetCredentialUnknownException
+import androidx.credentials.provider.CallingAppInfo
 import androidx.credentials.provider.PendingIntentHandler
+import androidx.credentials.provider.ProviderCreateCredentialRequest
+import androidx.credentials.registry.provider.RegisterCreationOptionsRequest
 import androidx.credentials.registry.provider.RegisterCredentialsRequest
 import androidx.credentials.registry.provider.RegistryManager
 import androidx.credentials.registry.provider.selectedEntryId
 import expo.modules.core.interfaces.SingletonModule
 import java.io.ByteArrayInputStream
-import org.json.JSONObject
 import java.util.zip.GZIPInputStream
-
-enum class Matcher(val value: String) {
-
-    /**
-     * The matcher is taken from https://github.com/digitalcredentialsdev/CMWallet
-     *
-     * This is the matcher before support for icons was added, which has broken the selection
-     *
-     * Current version:
-     * https://github.com/digitalcredentialsdev/CMWallet/blob/f4aa9ebbeaf55fa3973b467701887464be3d4b51/app/src/main/assets/openid4vp.wasm
-     */
-    CMWALLET("cmwallet-matcher.wasm"),
-
-    /**
-     * The matcher is taken from https://github.com/UbiqueInnovation/oid4vp-wasm-matcher
-     *
-     * Current version: https://github.com/UbiqueInnovation/oid4vp-wasm-matcher/releases/tag/v0.1.0
-     */
-    UBIQUE("ubique-matcher.wasm"),
-
-    /**
-     * The matcher is the aptitude consortium dcapi-matcher build.
-     */
-    APTITUDE_CONSORTIUM("aptitude-consortium-matcher.wasm");
-
-    override fun toString(): String {
-        return value
-    }
-
-    companion object {
-        fun fromStringIdentifier(value: String): Matcher =
-                when (value.lowercase()) {
-                    "cmwallet" -> CMWALLET
-                    "ubique" -> UBIQUE
-                    "aptitude-consortium" -> APTITUDE_CONSORTIUM
-                    else -> throw IllegalArgumentException("Unknown matcher value: $value")
-                }
-    }
-}
+import org.json.JSONObject
 
 private const val PROTOCOL_OPENID4VP = "openid4vp"
-private const val PROTOCOL_OPENID4VCI = "openid4vci"
+private const val ALLOWED_APPS_PREFS = "digital_credentials_api"
+private const val ALLOWED_APPS_KEY = "allowed_apps_json"
 
 @OptIn(ExperimentalDigitalCredentialApi::class)
 object DigitalCredentialsApiSingleton : SingletonModule {
@@ -65,68 +36,67 @@ object DigitalCredentialsApiSingleton : SingletonModule {
         return "DigitalCredentialsApiSingleton"
     }
 
-    // members to store the initial launch intent
-    var intent: Intent? = null
-    var isPending: Boolean = false
-
-    suspend fun registerCredentials(
+    suspend fun registerCredentialsRaw(
             context: Context,
             credentialBytes: ByteArray,
-            matcher: Matcher
+            matcherBytes: ByteArray,
+            protocol: String = PROTOCOL_OPENID4VP,
+            type: String = DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
+            registerCompatType: Boolean = true
     ) {
-        Log.i("DigitalCredentialsApi", "registering credentials")
+        Log.i("DigitalCredentialsApi", "registering credentials (raw)")
 
         val registryManager = RegistryManager.create(context)
-        val matcherInstance = loadMatcher(context, matcher)
+        val matcherInstance = maybeDecompressGzip(matcherBytes)
 
-        // For backward compatibility with Chrome
-        registryManager.registerCredentials(
-                request =
-                        object :
-                                RegisterCredentialsRequest(
-                                        "com.credman.IdentityCredential",
-                                        PROTOCOL_OPENID4VP,
-                                        credentialBytes,
-                                        matcherInstance
-                                ) {}
-        )
-
-        // In the future, should only register this type
-        registryManager.registerCredentials(
-                request =
-                        object :
-                                RegisterCredentialsRequest(
-                                        DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
-                                        PROTOCOL_OPENID4VP,
-                                        credentialBytes,
-                                        matcherInstance
-                                ) {}
-        )
-
-        if (matcher == Matcher.APTITUDE_CONSORTIUM) {
-            // OpenID4VCI registration for issuance flows (aptitude matcher only).
+        if (registerCompatType) {
             registryManager.registerCredentials(
                     request =
                             object :
                                     RegisterCredentialsRequest(
                                             "com.credman.IdentityCredential",
-                                            PROTOCOL_OPENID4VCI,
-                                            credentialBytes,
-                                            matcherInstance
-                                    ) {}
-            )
-
-            registryManager.registerCredentials(
-                    request =
-                            object :
-                                    RegisterCredentialsRequest(
-                                            DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
-                                            PROTOCOL_OPENID4VCI,
+                                            protocol,
                                             credentialBytes,
                                             matcherInstance
                                     ) {}
             )
         }
+
+        registryManager.registerCredentials(
+                request =
+                        object :
+                                RegisterCredentialsRequest(
+                                        type,
+                                        protocol,
+                                        credentialBytes,
+                                        matcherInstance
+                                ) {}
+        )
+    }
+
+    suspend fun registerCreationOptionsRaw(
+            context: Context,
+            creationOptionsBytes: ByteArray,
+            matcherBytes: ByteArray,
+            type: String = DigitalCredential.TYPE_DIGITAL_CREDENTIAL,
+            id: String = "openid4vci",
+            intentAction: String = ""
+    ) {
+        Log.i("DigitalCredentialsApi", "registering creation options (raw)")
+
+        val registryManager = RegistryManager.create(context)
+        val matcherInstance = maybeDecompressGzip(matcherBytes)
+
+        registryManager.registerCreationOptions(
+                object :
+                        RegisterCreationOptionsRequest(
+                                creationOptions = creationOptionsBytes,
+                                matcher = matcherInstance,
+                                type = type,
+                                id = id,
+                                intentAction = intentAction
+                        ) {}
+        )
     }
 
     fun getResponseIntent(response: String): Intent {
@@ -149,8 +119,29 @@ object DigitalCredentialsApiSingleton : SingletonModule {
         return resultData
     }
 
-    fun isGetCredentialRequestIntent(intent: Intent): Boolean {
-        return PendingIntentHandler.retrieveProviderGetCredentialRequest(intent) != null
+    fun getCreateResponseIntent(response: String, type: String?): Intent {
+        val resultData = Intent()
+        val responseType = if (type.isNullOrBlank()) DigitalCredential.TYPE_DIGITAL_CREDENTIAL else type
+
+        val responseObj = CreateCustomCredentialResponse(
+                type = responseType,
+                data = Bundle().apply {
+                    putString("androidx.credentials.BUNDLE_KEY_RESPONSE_JSON", response)
+                }
+        )
+
+        PendingIntentHandler.setCreateCredentialResponse(resultData, responseObj)
+        return resultData
+    }
+
+    fun getCreateErrorResponseIntent(errorMessage: String): Intent {
+        val resultData = Intent()
+        PendingIntentHandler.setCreateCredentialException(
+                resultData,
+                CreateCredentialUnknownException(errorMessage)
+        )
+
+        return resultData
     }
 
     fun getRequest(context: Context, intent: Intent): String? {
@@ -182,30 +173,118 @@ object DigitalCredentialsApiSingleton : SingletonModule {
         requestReturn.put("packageName", callingPackageName)
         requestReturn.put("request", requestJson)
 
-        // With the matcher we use now this is JSON, but once we allow custom matchers this
-        // structure has to change
-        // Currently the whole API is built around the provided matcher
-        val selectedEntry = JSONObject(request.selectedEntryId)
-        requestReturn.put(
-                "selectedEntry",
-                JSONObject()
-                        .put("providerIndex", selectedEntry.getInt("provider_idx"))
-                        .put("credentialId", selectedEntry.getString("id"))
-        )
+        // The selectedEntry payload is defined by the matcher. The matchers we currently
+        // support encode it as JSON with provider/credential details.
+        val selectedEntryId = request.selectedEntryId
+        if (!selectedEntryId.isNullOrBlank()) {
+            val selectedEntry = JSONObject(selectedEntryId)
+            requestReturn.put(
+                    "selectedEntry",
+                    JSONObject()
+                            .put("providerIndex", selectedEntry.getInt("provider_idx"))
+                            .put("credentialId", selectedEntry.getString("id"))
+            )
+        }
 
         return requestReturn.toString()
     }
 
-    /** Load matcher */
-    private fun loadMatcher(context: Context, matcher: Matcher) =
-            loadAsset(context, matcher.toString())
+    fun getCreateRequest(context: Context, intent: Intent): String? {
+        val request = toCreateRequest(intent)
+        if (request == null) {
+            Log.d("DigitalCredentialsApi", "intent is not a create credential action")
+            return null
+        }
+
+        val callingAppInfo = request.callingAppInfo
+        val callingPackageName = callingAppInfo.packageName
+        val callingOrigin = callingAppInfo.getOrigin(loadAllowedApps(context))
+
+        val requestJsonString = request.callingRequest.credentialData.getString("androidx.credentials.BUNDLE_KEY_REQUEST_JSON")
+        val requestJson = if (requestJsonString != null) JSONObject(requestJsonString) else null
+
+        val requestReturn = JSONObject()
+        requestReturn.put("origin", callingOrigin)
+        requestReturn.put("packageName", callingPackageName)
+        requestReturn.put("type", request.callingRequest.type)
+        requestReturn.put("request", requestJson)
+
+        return requestReturn.toString()
+    }
+
+    fun setAllowedApps(context: Context, allowedAppsJson: String?) {
+        val prefs = context.getSharedPreferences(ALLOWED_APPS_PREFS, Context.MODE_PRIVATE)
+        if (allowedAppsJson.isNullOrBlank()) {
+            prefs.edit().remove(ALLOWED_APPS_KEY).apply()
+        } else {
+            prefs.edit().putString(ALLOWED_APPS_KEY, allowedAppsJson).apply()
+        }
+    }
+
+    private fun toCreateRequest(intent: Intent): ProviderCreateCredentialRequest? {
+        val tmpRequestInfo = CreateCredentialRequest.DisplayInfo("userId")
+        return if (Build.VERSION.SDK_INT >= 34) {
+            val request = intent.getParcelableExtra(
+                    CredentialProviderService.EXTRA_CREATE_CREDENTIAL_REQUEST,
+                    android.service.credentials.CreateCredentialRequest::class.java
+            ) ?: return null
+            try {
+                ProviderCreateCredentialRequest(
+                        callingRequest =
+                                CreateCredentialRequest.createFrom(
+                                        request.type,
+                                        request.data.apply {
+                                            putBundle(CreateCredentialRequest.DisplayInfo.BUNDLE_KEY_REQUEST_DISPLAY_INFO, tmpRequestInfo.toBundle())
+                                        },
+                                        request.data,
+                                        requireSystemProvider = false,
+                                        request.callingAppInfo.origin
+                                ),
+                        callingAppInfo =
+                                CallingAppInfo.create(
+                                        request.callingAppInfo.packageName,
+                                        request.callingAppInfo.signingInfo,
+                                        request.callingAppInfo.origin
+                                ),
+                        biometricPromptResult = null
+                )
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        } else {
+            val requestBundle = intent.getBundleExtra(
+                    "android.service.credentials.extra.CREATE_CREDENTIAL_REQUEST"
+            ) ?: return null
+            val requestDataBundle = requestBundle.getBundle(
+                    "androidx.credentials.provider.extra.CREATE_REQUEST_CREDENTIAL_DATA"
+            ) ?: Bundle()
+            requestDataBundle.putBundle(
+                    CreateCredentialRequest.DisplayInfo.BUNDLE_KEY_REQUEST_DISPLAY_INFO,
+                    tmpRequestInfo.toBundle()
+            )
+            requestBundle.putBundle(
+                    "androidx.credentials.provider.extra.CREATE_REQUEST_CREDENTIAL_DATA",
+                    requestDataBundle
+            )
+            try {
+                ProviderCreateCredentialRequest.fromBundle(requestBundle)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
 
     /**
      * The allowed apps is required to pass to the getOrigin and is taken from
      * https://github.com/leecam/CMWallet for now This should be configurable in the future.
      */
     private fun loadAllowedApps(context: Context) =
-            loadAsset(context, "allowedApps.json").decodeToString()
+            loadAllowedAppsOverride(context) ?: loadAsset(context, "allowedApps.json").decodeToString()
+
+    private fun loadAllowedAppsOverride(context: Context): String? {
+        val prefs = context.getSharedPreferences(ALLOWED_APPS_PREFS, Context.MODE_PRIVATE)
+        return prefs.getString(ALLOWED_APPS_KEY, null)
+    }
 
     private fun loadAsset(context: Context, fileName: String): ByteArray {
         val data = context.assets.open(fileName).use { it.readBytes() }
