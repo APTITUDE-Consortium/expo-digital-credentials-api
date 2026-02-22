@@ -147,10 +147,6 @@ export interface AptitudeConsortiumTransactionDataConfig {
    * UI label mappings for transaction data.
    */
   ui_labels?: AptitudeConsortiumUiLabelConfig[]
-  /**
-   * Schema definition for transaction data.
-   */
-  schema: unknown
 }
 
 export type AptitudeConsortiumIcon = string | number[]

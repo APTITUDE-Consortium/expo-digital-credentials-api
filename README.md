@@ -389,7 +389,6 @@ type AptitudeConsortiumConfig = {
       subtype?: string
       claims?: Array<{ path: Array<string | number | null>; display?: Array<{ locale: string; label: string; description?: string }> }>
       ui_labels?: Array<{ key: string; values?: Array<{ locale: string; value: string }> }>
-      schema: unknown
     }>
   }>
 }
