@@ -84,7 +84,7 @@ function recursivelyMapSdJwtDc(
   return result
 }
 
-export function encodeCredentials(items: CredentialItem[], { debug }: { debug?: boolean } = {}): Uint8Array {
+export function encodeCredentials(items: CredentialItem[]): Uint8Array {
   const textEncoder = new TextEncoder()
   const chunks: Uint8Array[] = []
 
@@ -176,7 +176,6 @@ export function encodeCredentials(items: CredentialItem[], { debug }: { debug?: 
 
   // Create final JSON structure
   const registryJson = {
-    debug,
     credentials: {
       mso_mdoc: mdocCredentials,
       'dc+sd-jwt': sdJwtCredentials,
@@ -216,11 +215,6 @@ type EncodedSdJwtDcCredentialJsonPath = {
 }
 
 interface EncodedJson {
-  /**
-   * Only supported in the ubique matcher
-   */
-  debug?: boolean
-
   credentials: {
     mso_mdoc: Record<
       // doctype

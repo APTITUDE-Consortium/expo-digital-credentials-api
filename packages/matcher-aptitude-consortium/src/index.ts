@@ -46,7 +46,14 @@ export function encodeAptitudeConsortiumConfig(config: AptitudeConsortiumConfig)
 }
 
 export interface RegisterCredentialsOptions {
-  credentialBytes: Uint8Array
+  /**
+   * Unencoded Aptitude Consortium config.
+   */
+  aptitudeConsortiumConfig?: AptitudeConsortiumConfig
+  /**
+   * Pre-encoded registry bytes (advanced usage).
+   */
+  credentialsBytes?: Uint8Array
   matcherBytes?: Uint8Array
   protocol?: string
   type?: string
@@ -54,10 +61,16 @@ export interface RegisterCredentialsOptions {
 }
 
 export async function registerCredentials(options: RegisterCredentialsOptions): Promise<void> {
+  const credentialsBytes =
+    options.credentialsBytes ??
+    (options.aptitudeConsortiumConfig ? encodeAptitudeConsortiumConfig(options.aptitudeConsortiumConfig) : null)
+  if (!credentialsBytes) {
+    throw new Error('Either aptitudeConsortiumConfig or credentialsBytes must be provided.')
+  }
   const matcherBytes = options.matcherBytes ?? (await loadMatcherBytes())
 
   return registerCredentialsRaw({
-    credentialBytes: options.credentialBytes,
+    credentialBytes: credentialsBytes,
     matcherBytes,
     protocol: options.protocol ?? 'openid4vp',
     type: options.type,

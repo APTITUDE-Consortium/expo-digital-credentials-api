@@ -1,9 +1,4 @@
-import {
-  encodeCredentials as encodeCmWalletCredentials,
-  registerCredentials as registerCmWallet,
-  type CredentialItem,
-  type SdJwtDcClaims,
-} from '@animo-id/expo-digital-credentials-api-cmwallet'
+import { registerCredentials as registerCmWallet, type CredentialItem, type SdJwtDcClaims } from '@animo-id/expo-digital-credentials-api-cmwallet'
 import {
   encodeIssuanceCreationOptions,
   registerCreationOptions as registerCmWalletIssuance,
@@ -12,10 +7,7 @@ import {
   encodeAptitudeConsortiumConfig,
   registerCredentials as registerAptitude,
 } from '@animo-id/expo-digital-credentials-api-aptitude-consortium'
-import {
-  encodeCredentials as encodeUbiqueCredentials,
-  registerCredentials as registerUbique,
-} from '@animo-id/expo-digital-credentials-api-ubique'
+import { registerCredentials as registerUbique } from '@animo-id/expo-digital-credentials-api-ubique'
 import { normalizeAptitudeConsortiumConfig, type AptitudeConsortiumConfigInput } from './matcherEncoding'
 import { Button, SafeAreaView, ScrollView, Text, View } from 'react-native'
 
@@ -665,18 +657,18 @@ export default function App() {
   const register = (matcher: 'ubique' | 'cmwallet' | 'aptitude-consortium') => {
     if (matcher === 'aptitude-consortium') {
       const normalized = normalizeAptitudeConsortiumConfig(aptitudeConfig, { debug: true })
-      const credentialBytes = encodeAptitudeConsortiumConfig(normalized)
-      const decoded = new TextDecoder().decode(credentialBytes)
+      const credentialsBytes = encodeAptitudeConsortiumConfig(normalized)
+      const decoded = new TextDecoder().decode(credentialsBytes)
       console.log('Aptitude matcher payload (json)', decoded)
-      return registerAptitude({ credentialBytes })
+      return registerAptitude({ aptitudeConsortiumConfig: normalized })
         .then(() => console.log('success', matcher))
         .catch((error) => console.error('error', error))
     }
 
     const registerFn = matcher === 'ubique' ? registerUbique : registerCmWallet
-    const encode = matcher === 'ubique' ? encodeUbiqueCredentials : encodeCmWalletCredentials
-    const credentialBytes = encode(legacyCredentials, { debug: true })
-    return registerFn({ credentialBytes })
+    return matcher === 'ubique'
+      ? registerFn({ credentials: legacyCredentials, debug: true })
+      : registerFn({ credentials: legacyCredentials })
       .then(() => console.log('success', matcher))
       .catch((error) => console.error('error', error))
   }

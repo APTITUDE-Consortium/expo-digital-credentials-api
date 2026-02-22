@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <a href="#getting-started">Getting Started</a> 
+  <a href="#minimal-getting-started">Getting Started</a> 
   &nbsp;|&nbsp;
   <a href="#usage">Usage</a> 
   &nbsp;|&nbsp;
@@ -58,7 +58,9 @@ An [Expo Module](https://docs.expo.dev/modules/overview/) to automatically set u
   <img style="margin: 5px;" src="./assets/overlay.png" width="200px">
 </p>
 
-## Getting Started
+## Minimal Getting Started
+
+This is the smallest working setup: install, prebuild, register an overlay component, and register matcher bytes.
 
 Install the module using the following command.
 
@@ -73,6 +75,18 @@ npm install @animo-id/expo-digital-credentials-api
 pnpm install @animo-id/expo-digital-credentials-api
 ```
 
+Install one matcher package (choose one):
+
+```sh
+pnpm install @animo-id/expo-digital-credentials-api-cmwallet
+# or
+pnpm install @animo-id/expo-digital-credentials-api-ubique
+# or
+pnpm install @animo-id/expo-digital-credentials-api-aptitude-consortium
+# and for OpenID4VCI creation options
+pnpm install @animo-id/expo-digital-credentials-api-cmwallet-issuance
+```
+
 Then prebuild the application so the Expo Module wrapper can be added as native dependency (If you aren't making any manual modification to the Android directories you can add them to the gitignore of your project and generate them on demand):
 
 ```sh
@@ -83,7 +97,31 @@ yarn expo prebuild
 npx expo prebuild
 ```
 
-That's it, you now have the Digital Credentials API configured for your Android project.
+Register the overlay component early (usually in `index.ts`):
+
+```ts
+import { registerRootComponent } from "expo";
+import registerGetCredentialComponent, {
+  registerCreateCredentialComponent,
+} from "@animo-id/expo-digital-credentials-api/register";
+import App from "./App";
+import GetOverlay from "./GetOverlay";
+import CreateOverlay from "./CreateOverlay";
+
+registerGetCredentialComponent(GetOverlay);
+registerCreateCredentialComponent(CreateOverlay);
+registerRootComponent(App);
+```
+
+Register credentials (example for CMWallet):
+
+```ts
+import { registerCredentials } from "@animo-id/expo-digital-credentials-api-cmwallet";
+
+await registerCredentials({ credentials });
+```
+
+That's it. Your app can now receive Digital Credentials API intents.
 
 > [!WARNING]  
 > You might need to set the Kotlin version of your project to 2.0.21. To do this, add the [`expo-build-properties`](https://docs.expo.dev/versions/latest/sdk/build-properties/) dependency to your project, and configure it with `android.kotlinVersion` set to `'2.0.21'`.
@@ -100,6 +138,8 @@ That's it, you now have the Digital Credentials API configured for your Android 
 > ```
 
 ## Usage
+
+This section dives into each feature in detail.
 
 The base package (`@animo-id/expo-digital-credentials-api`) exposes low-level APIs that accept raw bytes and matcher WASM bytes. For object-based configuration (including runtime loading of matcher WASM), use the matcher packages:
 
@@ -159,14 +199,12 @@ Choose the matcher package that fits your needs. Registering credentials for a m
   - Supports icons
   - Supports showing claim values
 
-```tsx
-import { encodeCredentials, registerCredentials } from "@animo-id/expo-digital-credentials-api-cmwallet";
+The matcher packages accept unencoded objects in `registerCredentials`. If you need the raw bytes (e.g., to call the base API), use `encodeCredentials` from the matcher package.
 
-// Build credentialBytes from the matcher schema
-const credentialBytes = encodeCredentials(credentials, { debug: true });
-await registerCredentials({
-  credentialBytes,
-});
+```tsx
+import { registerCredentials } from "@animo-id/expo-digital-credentials-api-cmwallet";
+
+await registerCredentials({ credentials });
 ```
 
 ### Registering Creation Options (OpenID4VCI)

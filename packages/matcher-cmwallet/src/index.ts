@@ -24,7 +24,14 @@ export type {
 export { encodeCredentials, loadMatcherBytes }
 
 export interface RegisterCredentialsOptions {
-  credentialBytes: Uint8Array
+  /**
+   * Unencoded credential registry entries.
+   */
+  credentials?: CredentialItem[]
+  /**
+   * Pre-encoded registry bytes (advanced usage).
+   */
+  credentialsBytes?: Uint8Array
   matcherBytes?: Uint8Array
   protocol?: string
   type?: string
@@ -32,9 +39,15 @@ export interface RegisterCredentialsOptions {
 }
 
 export async function registerCredentials(options: RegisterCredentialsOptions): Promise<void> {
+  const credentialsBytes =
+    options.credentialsBytes ??
+    (options.credentials ? encodeCredentials(options.credentials) : null)
+  if (!credentialsBytes) {
+    throw new Error('Either credentials or credentialsBytes must be provided.')
+  }
   const matcherBytes = options.matcherBytes ?? (await loadMatcherBytes())
   return registerCredentialsRaw({
-    credentialBytes: options.credentialBytes,
+    credentialBytes: credentialsBytes,
     matcherBytes,
     protocol: options.protocol ?? 'openid4vp',
     type: options.type,

@@ -46,11 +46,6 @@ export type RegistrySdJwtPaths = {
 }
 
 export interface MatcherRegistryJson {
-  /**
-   * Only supported in the Ubique matcher.
-   */
-  debug?: boolean
-
   credentials: {
     mso_mdoc: Record<
       string,
