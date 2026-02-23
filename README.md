@@ -58,6 +58,15 @@ An [Expo Module](https://docs.expo.dev/modules/overview/) to automatically set u
   <img style="margin: 5px;" src="./assets/overlay.png" width="200px">
 </p>
 
+## Matcher Packages
+
+| Package | Purpose |
+| --- | --- |
+| `@animo-id/expo-digital-credentials-api-cmwallet` | Matcher wrapper for the CMWallet registry format |
+| `@animo-id/expo-digital-credentials-api-ubique` | Matcher wrapper for the Ubique registry format |
+| `@animo-id/expo-digital-credentials-api-aptitude-consortium` | Matcher wrapper for the Aptitude Consortium registry format |
+| `@animo-id/expo-digital-credentials-api-cmwallet-issuance` | OpenID4VCI creation options wrapper |
+
 ## Minimal Getting Started
 
 This is the smallest working setup: install, prebuild, register an overlay component, and register matcher bytes.
@@ -75,16 +84,11 @@ npm install @animo-id/expo-digital-credentials-api
 pnpm install @animo-id/expo-digital-credentials-api
 ```
 
-Install one matcher package (choose one):
+Install a matcher wrapper package from the table above. If you need OpenID4VCI issuance, install the creation options wrapper.
 
 ```sh
-pnpm install @animo-id/expo-digital-credentials-api-cmwallet
-# or
-pnpm install @animo-id/expo-digital-credentials-api-ubique
-# or
-pnpm install @animo-id/expo-digital-credentials-api-aptitude-consortium
-# and for OpenID4VCI creation options
-pnpm install @animo-id/expo-digital-credentials-api-cmwallet-issuance
+pnpm install <matcher-wrapper-package>
+pnpm install <issuance-wrapper-package>
 ```
 
 Then prebuild the application so the Expo Module wrapper can be added as native dependency (If you aren't making any manual modification to the Android directories you can add them to the gitignore of your project and generate them on demand):
@@ -141,15 +145,9 @@ That's it. Your app can now receive Digital Credentials API intents.
 
 This section dives into each feature in detail.
 
-The base package (`@animo-id/expo-digital-credentials-api`) exposes low-level APIs that accept raw bytes and matcher WASM bytes. For object-based configuration (including runtime loading of matcher WASM), use the matcher packages:
-
-- `@animo-id/expo-digital-credentials-api-cmwallet`
-- `@animo-id/expo-digital-credentials-api-cmwallet-issuance`
-- `@animo-id/expo-digital-credentials-api-ubique`
-- `@animo-id/expo-digital-credentials-api-aptitude-consortium`
+The base package (`@animo-id/expo-digital-credentials-api`) exposes low-level APIs that accept raw bytes and matcher WASM bytes. For object-based configuration (including runtime loading of matcher WASM), use the matcher packages listed in the table above.
 
 If you call the base API directly, you must supply `matcherBytes` as a `Uint8Array`. The matcher packages expose `loadMatcherBytes()` helpers to load the bundled WASM at runtime.
-Use `@animo-id/expo-digital-credentials-api-cmwallet` for verification and `@animo-id/expo-digital-credentials-api-cmwallet-issuance` for OpenID4VCI creation options.
 
 If you use a custom Metro config, ensure `wasm` is included in `resolver.assetExts` so the bundled matcher assets are packaged correctly.
 
@@ -234,54 +232,48 @@ await registerCreationOptions({
 
 ```ts
 type DigitalCredentialsRequest = {
-  // Web origin (for browsers) or null if unavailable
-  origin: string
-  // Calling app package name (e.g., com.android.chrome)
-  packageName: string
-  // Raw request JSON from the system (either `providers` or `requests`)
-  request:
-    | {
-        providers: Array<{
-          protocol: "openid4vp" | "openid4vci"
-          request: string
-        }>
-        requests?: never
-      }
-    | {
-        requests: Array<{
-          protocol: "openid4vp" | "openid4vci"
-          data: string
-        }>
-        providers?: never
-      }
-
-  /**
-   * Legacy selection info derived from selectedEntryId.
-   * Prefer `selection` when present.
-   */
-  selectedEntry?: {
-    providerIndex: number
-    credentialId: string
+  // Normalized request JSON extracted from the Android bundle
+  request?: {
+    requests?: Array<{ protocol: string; data: unknown }>
+    providers?: Array<{ protocol: string; request: string }>
   }
 
-  /**
-   * Detailed selection (supports multi‑credential selection).
-   * Mirrors the CMWallet selection semantics.
-   */
+  // Convenience fields when available
+  origin?: string | null
+  packageName?: string
+  signingInfo?: string
+
+  // Normalized credential option entries (Android)
+  credentialOptions?: Array<{
+    type?: string
+    allowedProviders?: unknown
+    isSystemProviderRequired?: boolean
+    candidateQueryData?: Record<string, unknown>
+    retrievalData?: Record<string, unknown>
+  }>
+
+  // Optional matcher selection metadata
+  selectedEntry?: { providerIndex: number; credentialId: string }
   selection?: {
     requestIdx: number
     creds: Array<{
       entryId: string
-      dcqlId?: string
       matchedClaimPaths?: Array<Array<string | number | null>>
+      metadata?: Record<string, unknown>
     }>
   }
+
+  // Raw ProviderGetCredentialRequest bundle JSON (Android), for debugging
+  sourceBundle?: unknown
+
+  // Additional raw keys if present
+  [key: string]: unknown
 }
 ```
 
 Notes:
-- `selection` is populated from `selectedCredentialSet` when available, and falls back to `selectedEntryId`.
-- `matchedClaimPaths` are matcher-provided claim path pointers (DCQL), if present in metadata.
+- `request`, `origin`, and `packageName` are derived from the Android bundle when possible.
+- `sourceBundle` keeps the full raw bundle for debugging or custom parsing.
 
 #### Create Credential Request (JS)
 
@@ -294,107 +286,6 @@ type DigitalCredentialsCreateRequest = {
   request: object | null
 }
 ```
-
-### Matcher Registry Encodings
-
-#### CMWallet / Ubique matcher registry
-
-Binary layout:
-- 4-byte little‑endian JSON offset
-- concatenated icon bytes (may be empty)
-- UTF‑8 JSON payload
-
-JSON shape:
-```ts
-type MatcherRegistryJson = {
-  // Only supported in the Ubique matcher
-  debug?: boolean
-  credentials: {
-    mso_mdoc: Record<
-      string,
-      Array<{
-        id: string
-        title: string
-        subtitle?: string
-        icon?: { start: number; length: number } | null
-        paths: Record<
-          string,
-          Record<string, { value?: string | number | boolean; display: string }>
-        >
-      }>
-    >
-    "dc+sd-jwt": Record<
-      string,
-      Array<{
-        id: string
-        title: string
-        subtitle?: string
-        icon?: { start: number; length: number } | null
-        paths: Record<
-          string,
-          { value?: string | number | boolean; display: string } | MatcherRegistryJson["credentials"]["dc+sd-jwt"][string][number]["paths"]
-        >
-      }>
-    >
-  }
-}
-```
-
-#### CMWallet Issuance (OpenID4VCI) creation options
-
-Binary layout:
-- 4-byte little‑endian JSON offset
-- icon bytes (may be empty)
-- UTF‑8 JSON payload
-
-JSON shape:
-```ts
-type IssuanceCreationOptionsJson = {
-  display: {
-    title: string
-    subtitle?: string
-    icon?: { start: number; length: number } | null
-  }
-  capabilities?: Record<string, Record<string, never>>
-}
-```
-
-#### Aptitude Consortium matcher
-
-JSON payload (UTF‑8), no binary header:
-```ts
-type AptitudeConsortiumConfig = {
-  default_id_prefix?: string
-  openid4vp?: { /* ... */ }
-  dcql?: { /* ... */ }
-  log_level?: "error" | "warn" | "info" | "debug" | "trace"
-  credentials?: Array<{
-    id?: string
-    format: string
-    title?: string
-    subtitle?: string
-    disclaimer?: string
-    warning?: string
-    fields?: Array<{ path: Array<string | number | null>; display_name: string; display_value?: string }>
-    metadata?: unknown
-    icon?: string | number[]
-    vcts?: string[]
-    doctype?: string
-    holder_binding?: boolean
-    claims?: unknown
-    protocols?: string[]
-    transaction_data_types?: Array<{
-      type: string
-      subtype?: string
-      claims?: Array<{ path: Array<string | number | null>; display?: Array<{ locale: string; label: string; description?: string }> }>
-      ui_labels?: Array<{ key: string; values?: Array<{ locale: string; value: string }> }>
-    }>
-  }>
-}
-```
-
-Notes:
-- `icon` must be a base64 string (no data URL prefix) or a `number[]`. If your source is a data URL or `Uint8Array`, normalize it in your app before encoding.
 
 ### Handling Credential Request
 

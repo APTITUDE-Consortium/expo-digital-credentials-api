@@ -1,65 +1,116 @@
 
-export interface DigitalCredentialsRequest {
+/**
+ * Raw ProviderGetCredentialRequest bundle JSON.
+ *
+ * The Android layer passes through the full request bundle as-is.
+ * Treat the payload as JSON (stringly typed).
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
+export type JsonObject = { [key: string]: JsonValue }
+
+/**
+ * CMWallet parses GetDigitalCredentialOption.requestJson into one of these shapes.
+ */
+export type DigitalCredentialRequestOptions =
+  | DigitalCredentialRequestOptionsModern
+  | DigitalCredentialRequestOptionsLegacy
+
+export type DigitalCredentialRequestOptionsModern = {
+  requests: DigitalCredentialRequestEntry[]
+}
+
+export type DigitalCredentialRequestOptionsLegacy = {
+  providers: DigitalCredentialRequestLegacyEntry[]
+}
+
+export type DigitalCredentialRequestEntry = {
+  protocol: string
+  data: OpenId4vpRequest | OpenId4vciRequest | JsonValue
+}
+
+export type DigitalCredentialRequestLegacyEntry = {
+  protocol: string
+  request: string
+}
+
+/**
+ * OpenID4VP request object (data payload) as used by CMWallet.
+ * If `request` is present, CMWallet treats it as a signed request and
+ * replaces the object with the JWS payload.
+ */
+export type OpenId4vpRequest = JsonObject & {
+  nonce: string
+  dcql_query: JsonObject
+  request?: string
+  client_id?: string
+  offer?: JsonObject
+  client_metadata?: OpenId4vpClientMetadata
+  response_mode?: string
+  transaction_data?: string[]
+}
+
+export type OpenId4vpClientMetadata = JsonObject & {
+  jwks?: {
+    keys: Jwk[]
+  }
+}
+
+export type Jwk = JsonObject & {
+  kty?: string
+  crv?: string
+  use?: string
+}
+
+/**
+ * OpenID4VCI request payload (data object).
+ * CMWallet passes this JSON object to its OpenId4VCI parser.
+ */
+export type OpenId4vciRequest = JsonObject
+
+export type DigitalCredentialsRequest = {
   /**
-   * e.g. `https://digital-credentials.dev`
+   * Normalized request JSON extracted from the Android bundle.
    */
-  origin: string
+  request?: DigitalCredentialRequestOptions
 
   /**
-   * e.g. `com.android.chrome`
+   * Origin of the request when provided by the system.
    */
-  packageName: string
-
-  request:
-    | {
-        requests?: never
-
-        /**
-         * List of providers that can handle the request
-         *
-         * @deprecated in v1.0 only `requests` should/will be used, but for interoperability
-         * you should also handle the providers.
-         */
-        providers: Array<{
-          /**
-           * OpenID4VP or OpenID4VCI request
-           */
-          protocol: 'openid4vp' | 'openid4vci'
-
-          /**
-           * The OpenID4VP specific request as a JSON String
-           */
-          request: string
-        }>
-      }
-    | {
-        providers?: never
-
-        requests: Array<{
-          /**
-           * OpenID4VP or OpenID4VCI request
-           */
-          protocol: 'openid4vp' | 'openid4vci'
-
-          /**
-           * The OpenID4VP specific request data as a JSON string
-           */
-          data: string
-        }>
-      }
+  origin?: string | null
 
   /**
-   * Legacy selection info derived from selectedEntryId. Prefer `selection` when available.
+   * Calling package name when provided by the system.
+   */
+  packageName?: string
+
+  /**
+   * Calling app signing info (raw string) when provided by the system.
+   */
+  signingInfo?: string
+
+  /**
+   * Normalized credential option entries (Android).
+   */
+  credentialOptions?: Array<{
+    type?: string
+    allowedProviders?: JsonValue
+    isSystemProviderRequired?: boolean
+    candidateQueryData?: JsonObject
+    retrievalData?: JsonObject
+  }>
+
+  /**
+   * Legacy selection info derived from selectedEntryId.
    */
   selectedEntry?: {
-    /**
-     * The credential id as provided to the register credentials method
-     */
     credentialId: string
-
-    /**
-     * The index of the provider/request that was selected
-     */
     providerIndex: number
   }
 
@@ -67,28 +118,23 @@ export interface DigitalCredentialsRequest {
    * Detailed selection info (supports multiple credential selections).
    */
   selection?: {
-    /**
-     * Index of the request/provider that was selected.
-     */
     requestIdx: number
-
     creds: Array<{
-      /**
-       * Credential entry id chosen by the matcher/provider.
-       */
       entryId: string
-
-      /**
-       * DCQL credential id, if provided by the matcher.
-       */
-      dcqlId?: string
-
-      /**
-       * Selected claim paths (DCQL), if provided by the matcher.
-       */
       matchedClaimPaths?: Array<Array<string | number | null>>
+      metadata?: JsonObject
     }>
   }
+
+  /**
+   * Raw ProviderGetCredentialRequest bundle JSON (Android), for debugging.
+   */
+  sourceBundle?: JsonObject
+
+  /**
+   * Additional raw keys, if any.
+   */
+  [key: string]: JsonValue | undefined
 }
 
 export interface DigitalCredentialsCreateRequest {
@@ -119,7 +165,7 @@ export interface DigitalCredentialsCreateRequest {
     /**
      * Protocol-specific payload (raw JSON).
      */
-    data: unknown
+    data: JsonValue
   } | null
 }
 

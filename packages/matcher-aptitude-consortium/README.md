@@ -67,6 +67,78 @@ Credential entry fields:
 - `protocols`: supported protocols
 - `transaction_data_types`: transaction data descriptors
 
+## Selection Metadata (Get Request)
+
+When this matcher is used for OpenID4VP, the Android selection payload includes
+matcher-specific metadata for each selected credential:
+
+```ts
+type AptitudeSelectionMetadata = {
+  dcql_id: string
+  credential_id: string
+  transaction_data_indices?: number[]
+  [key: string]: unknown
+}
+```
+
+These values are available on `DigitalCredentialsRequest.selection.creds[].metadata`.
+
+Empty selection entries use the `__none__` sentinel for `entryId` (optionally with a suffix).
+
+Helper:
+
+```ts
+import {
+  getAptitudeSelection,
+  type AptitudeSelectionMetadata,
+} from "@animo-id/expo-digital-credentials-api-aptitude-consortium";
+import type { DigitalCredentialsRequest } from "@animo-id/expo-digital-credentials-api";
+
+function handleRequest(request: DigitalCredentialsRequest) {
+  const selection = getAptitudeSelection(request);
+  const first = selection?.creds[0];
+  const meta = first?.metadata;
+
+  if (meta) {
+    console.log(meta.dcql_id, meta.credential_id, meta.transaction_data_indices);
+  }
+}
+```
+
+## Handling Get Request (Paradym-Style Minimal Example)
+
+The `request` prop is injected by the base library when the Android
+`DigitalCredentialsApiActivity` launches. You register a component and receive
+the parsed request object automatically.
+
+Register the component early (e.g., `index.ts`):
+
+```ts
+import registerGetCredentialComponent from "@animo-id/expo-digital-credentials-api/register";
+import { DcApiSharingScreen } from "./src/features/share/DcApiSharingScreen";
+
+registerGetCredentialComponent(DcApiSharingScreen);
+```
+
+Consume the request and selection metadata in your screen:
+
+```ts
+import type { DigitalCredentialsRequest } from "@animo-id/expo-digital-credentials-api";
+import { getAptitudeSelection } from "@animo-id/expo-digital-credentials-api-aptitude-consortium";
+
+export function DcApiSharingScreen({ request }: { request: DigitalCredentialsRequest }) {
+  const selection = getAptitudeSelection(request);
+  const first = selection?.creds[0];
+  const meta = first?.metadata;
+
+  if (meta) {
+    console.log(meta.dcql_id, meta.credential_id, meta.transaction_data_indices);
+  }
+
+  return null;
+}
+```
+
 ## Details
 
 - `encodeAptitudeConsortiumConfig` encodes the JSON config to UTF‑8 bytes (advanced usage).

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import { AppRegistry, View } from 'react-native'
 import type { DigitalCredentialsCreateRequest, DigitalCredentialsRequest } from './DigitalCredentialsApi.types'
+import { normalizeGetRequest } from './normalize'
 import { ensureAndroid } from './util'
 
 function WrappingComponent({ children }: PropsWithChildren) {
@@ -32,7 +33,7 @@ export default function registerGetCredentialComponent(
 
   AppRegistry.registerComponent('DigitalCredentialsApiActivity', () => ({ request }: { request: string }) => (
     <WrappingComponent>
-      <Component request={JSON.parse(request)} />
+      <Component request={normalizeGetRequest(request)} />
     </WrappingComponent>
   ))
 }

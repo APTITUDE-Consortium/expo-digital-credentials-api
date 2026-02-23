@@ -1,6 +1,7 @@
 export {
   DigitalCredentialsRequest,
   DigitalCredentialsCreateRequest,
+  JsonObject,
   RegisterCreationOptionsOptions,
   RegisterCredentialsOptions,
   SendErrorResponseOptions,

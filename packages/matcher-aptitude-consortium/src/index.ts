@@ -17,6 +17,12 @@ import type {
   AptitudeConsortiumUiLabelConfig,
   ClaimsPathPointer,
 } from './schema'
+import type {
+  AptitudeSelectionCredential,
+  AptitudeSelectionMetadata,
+  DigitalCredentialsRequestWithAptitudeSelection,
+} from './selection'
+import { getAptitudeSelection } from './selection'
 
 export type {
   AptitudeConsortiumClaimConfig,
@@ -34,9 +40,13 @@ export type {
   AptitudeConsortiumTransactionDataConfig,
   AptitudeConsortiumUiLabelConfig,
   ClaimsPathPointer,
+  AptitudeSelectionCredential,
+  AptitudeSelectionMetadata,
+  DigitalCredentialsRequestWithAptitudeSelection,
 }
 
 export { loadMatcherBytes }
+export { getAptitudeSelection }
 
 export function encodeAptitudeConsortiumConfig(config: AptitudeConsortiumConfig): Uint8Array {
   const textEncoder = new TextEncoder()
