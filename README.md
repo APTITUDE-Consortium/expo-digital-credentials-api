@@ -366,7 +366,6 @@ JSON payload (UTF‑8), no binary header:
 type AptitudeConsortiumConfig = {
   default_id_prefix?: string
   openid4vp?: { /* ... */ }
-  openid4vci?: { /* ... */ }
   dcql?: { /* ... */ }
   log_level?: "error" | "warn" | "info" | "debug" | "trace"
   credentials?: Array<{

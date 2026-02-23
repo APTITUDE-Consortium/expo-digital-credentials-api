@@ -29,41 +29,6 @@ export interface AptitudeConsortiumOpenId4VpConfig {
   allow_response_mode_jwt?: boolean
 }
 
-export interface AptitudeConsortiumOpenId4VciConfig {
-  /**
-   * Enable OpenID4VCI handling.
-   */
-  enabled?: boolean
-  /**
-   * Allow direct credential offers.
-   */
-  allow_credential_offer?: boolean
-  /**
-   * Allow credential offer URI.
-   */
-  allow_credential_offer_uri?: boolean
-  /**
-   * Allow authorization_code flow.
-   */
-  allow_authorization_code?: boolean
-  /**
-   * Allow pre-authorized code flow.
-   */
-  allow_pre_authorized_code?: boolean
-  /**
-   * Allow tx_code in pre-authorized flow.
-   */
-  allow_tx_code?: boolean
-  /**
-   * Allow authorization_details.
-   */
-  allow_authorization_details?: boolean
-  /**
-   * Allow scope parameter.
-   */
-  allow_scope?: boolean
-}
-
 export type AptitudeConsortiumCredentialSetOptionMode = 'all_satisfiable' | 'first_satisfiable_only'
 
 export type AptitudeConsortiumOptionalCredentialSetsMode =
@@ -238,10 +203,6 @@ export interface AptitudeConsortiumConfig {
    * OpenID4VP configuration.
    */
   openid4vp?: AptitudeConsortiumOpenId4VpConfig
-  /**
-   * OpenID4VCI configuration.
-   */
-  openid4vci?: AptitudeConsortiumOpenId4VciConfig
   /**
    * DCQL planning options.
    */

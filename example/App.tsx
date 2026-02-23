@@ -574,16 +574,6 @@ export default function App() {
       allow_signed_requests: true,
       allow_response_mode_jwt: true,
     },
-    openid4vci: {
-      enabled: true,
-      allow_credential_offer: true,
-      allow_credential_offer_uri: true,
-      allow_authorization_code: true,
-      allow_pre_authorized_code: true,
-      allow_tx_code: true,
-      allow_authorization_details: true,
-      allow_scope: true,
-    },
     dcql: {
       credential_set_option_mode: 'first_satisfiable_only',
       optional_credential_sets_mode: 'prefer_present',

@@ -40,7 +40,6 @@ Top-level config:
 
 - `default_id_prefix`: optional prefix for generated ids
 - `openid4vp`: OpenID4VP feature flags
-- `openid4vci`: OpenID4VCI feature flags
 - `dcql`: DCQL planning options
 - `log_level`: matcher log level
 - `credentials`: list of credential entries
