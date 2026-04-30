@@ -2,31 +2,45 @@ export type ClaimsPathPointer = Array<string | number | null>
 
 export type AptitudeConsortiumLogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace'
 
+export type AptitudeConsortiumOpenId4VpRequestProtocol =
+  | 'openid4vp-v1-unsigned'
+  | 'openid4vp-v1-signed'
+  | 'openid4vp-v1-multisigned'
+  | (string & {})
+
+export type AptitudeConsortiumOpenId4VpResponseMode = 'dc_api' | 'dc_api.jwt' | (string & {})
+
+export type AptitudeConsortiumOpenId4VpResponseType = 'vp_token' | (string & {})
+
+export type AptitudeConsortiumOpenId4VpQueryMethod = 'dcql_query' | (string & {})
+
+export type AptitudeConsortiumOpenId4VpRequestParameter = 'transaction_data' | (string & {})
+
 export interface AptitudeConsortiumOpenId4VpConfig {
   /**
    * Enable OpenID4VP handling.
    */
   enabled?: boolean
   /**
-   * Allow DCQL requests.
+   * DC API protocol variants the matcher should accept.
    */
-  allow_dcql?: boolean
+  supported_request_protocols?: AptitudeConsortiumOpenId4VpRequestProtocol[]
   /**
-   * Allow DCQL scope usage.
+   * OpenID4VP response modes the matcher should accept.
    */
-  allow_dcql_scope?: boolean
+  supported_response_modes?: AptitudeConsortiumOpenId4VpResponseMode[]
   /**
-   * Allow transaction data.
+   * OpenID4VP response types the matcher should accept when present.
    */
-  allow_transaction_data?: boolean
+  supported_response_types?: AptitudeConsortiumOpenId4VpResponseType[]
   /**
-   * Allow signed requests.
+   * Query mechanisms the matcher should accept.
    */
-  allow_signed_requests?: boolean
+  supported_query_methods?: AptitudeConsortiumOpenId4VpQueryMethod[]
   /**
-   * Allow response_mode=jwt.
+   * Extra request parameters the matcher should process.
    */
-  allow_response_mode_jwt?: boolean
+  supported_request_parameters?: AptitudeConsortiumOpenId4VpRequestParameter[]
 }
 
 export type AptitudeConsortiumCredentialSetOptionMode = 'all_satisfiable' | 'first_satisfiable_only'

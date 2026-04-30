@@ -34,15 +34,188 @@ await registerCredentials({ aptitudeConsortiumConfig: config });
 // await registerCredentials({ credentialsBytes });
 ```
 
-## Config Features
+## OpenID4VP Tutorial
+
+The wrapper fills OpenID4VP defaults before encoding config. Omitted config works
+out of the box with all currently supported OpenID4VP/DC API features enabled.
+
+```ts
+import { registerCredentials } from "@animo-id/expo-digital-credentials-api-aptitude-consortium";
+
+await registerCredentials({
+  aptitudeConsortiumConfig: { credentials },
+});
+```
+
+Use explicit support lists only when you want to disable or narrow features.
+Unsupported parts make that request branch produce no match. Unknown or malformed
+request parts are ignored by the matcher instead of failing the whole request.
+
+```ts
+import { registerCredentials } from "@animo-id/expo-digital-credentials-api-aptitude-consortium";
+
+const aptitudeConsortiumConfig = {
+  openid4vp: {
+    enabled: true,
+    supported_request_protocols: [
+      "openid4vp-v1-unsigned",
+      "openid4vp-v1-signed",
+      "openid4vp-v1-multisigned",
+    ],
+    supported_response_modes: ["dc_api", "dc_api.jwt"],
+    supported_response_types: ["vp_token"],
+    supported_query_methods: ["dcql_query"],
+    supported_request_parameters: ["transaction_data"],
+  },
+  dcql: {
+    credential_set_option_mode: "all_satisfiable",
+    optional_credential_sets_mode: "prefer_present",
+  },
+  credentials,
+};
+
+await registerCredentials({ aptitudeConsortiumConfig });
+```
+
+Meaning:
+
+- `supported_request_protocols`: request transport/parsing forms you accept.
+- `supported_response_modes`: OpenID4VP response modes. Use spec values:
+  `dc_api` and `dc_api.jwt`.
+- `supported_response_types`: response types, currently usually `vp_token`.
+- `supported_query_methods`: query syntaxes, currently `dcql_query`.
+- `supported_request_parameters`: optional request parameters with matcher
+  behavior, such as `transaction_data`.
+
+Keep values out of a list to disable that feature without adding app-side
+branching logic.
+
+Helpers:
+
+- `DEFAULT_APTITUDE_CONSORTIUM_CONFIG`: default matcher config.
+- `DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG`: default OpenID4VP support.
+- `withDefaultAptitudeConsortiumConfig(config)`: fills omitted defaults.
+- `encodeAptitudeConsortiumConfig(config)`: fills defaults, then encodes JSON.
+
+## Config Reference
+
+Full config shape:
+
+```ts
+import type { AptitudeConsortiumConfig } from "@animo-id/expo-digital-credentials-api-aptitude-consortium";
+
+const aptitudeConsortiumConfig: AptitudeConsortiumConfig = {
+  default_id_prefix: "cred-",
+  log_level: "debug",
+  openid4vp: {
+    enabled: true,
+    supported_request_protocols: [
+      "openid4vp-v1-unsigned",
+      "openid4vp-v1-signed",
+      "openid4vp-v1-multisigned",
+    ],
+    supported_response_modes: ["dc_api", "dc_api.jwt"],
+    supported_response_types: ["vp_token"],
+    supported_query_methods: ["dcql_query"],
+    supported_request_parameters: ["transaction_data"],
+  },
+  dcql: {
+    credential_set_option_mode: "all_satisfiable",
+    optional_credential_sets_mode: "prefer_present",
+  },
+  credentials: [
+    {
+      id: "pid-1",
+      format: "dc+sd-jwt",
+      title: "PID",
+      subtitle: "Issued by Utopia",
+      disclaimer: "Shown before sharing",
+      warning: "Shown as warning text",
+      icon: "iVBORw0KGgoAAAANSUhEUgAA...",
+      vcts: ["urn:eudi:pid:1"],
+      holder_binding: true,
+      claims: {
+        family_name: "Doe",
+        given_name: "Jane",
+      },
+      fields: [
+        {
+          path: ["family_name"],
+          display_name: "Family Name",
+          display_value: "Doe",
+        },
+      ],
+      transaction_data_types: [
+        {
+          type: "urn:eudi:sca:global:payment:1",
+          subtype: "credit-transfer",
+          claims: [
+            {
+              path: ["amount"],
+              display: [
+                {
+                  locale: "en",
+                  label: "Amount",
+                  description: "Payment amount",
+                },
+              ],
+            },
+          ],
+          ui_labels: [
+            {
+              key: "payee",
+              values: [{ locale: "en", value: "Payee" }],
+            },
+          ],
+        },
+      ],
+      metadata: { source: "wallet" },
+      protocols: ["openid4vp"],
+    },
+    {
+      id: "mdl-1",
+      format: "mso_mdoc",
+      title: "Mobile Driving Licence",
+      doctype: "org.iso.18013.5.1.mDL",
+      claims: {
+        "org.iso.18013.5.1": {
+          family_name: "Doe",
+          given_name: "Jane",
+        },
+      },
+      fields: [
+        {
+          path: ["org.iso.18013.5.1", "family_name"],
+          display_name: "Family Name",
+        },
+      ],
+    },
+  ],
+};
+```
 
 Top-level config:
 
 - `default_id_prefix`: optional prefix for generated ids
-- `openid4vp`: OpenID4VP feature flags
-- `dcql`: DCQL planning options
-- `log_level`: matcher log level
-- `credentials`: list of credential entries
+- `openid4vp`: optional OpenID4VP support. Omitted fields use defaults.
+- `dcql`: optional DCQL planning options.
+- `log_level`: optional matcher log level: `error`, `warn`, `info`, `debug`, or `trace`.
+- `credentials`: credential entries registered with Android Credential Manager.
+
+OpenID4VP config:
+
+- `enabled`: enables OpenID4VP matching. Defaults to `true` in the TypeScript wrapper.
+- `supported_request_protocols`: accepted request forms. Defaults to unsigned, signed, and multisigned OpenID4VP 1.0.
+- `supported_response_modes`: accepted response modes. Defaults to `dc_api` and `dc_api.jwt`.
+- `supported_response_types`: accepted response types. Defaults to `vp_token`.
+- `supported_query_methods`: accepted query methods. Defaults to `dcql_query`.
+- `supported_request_parameters`: supported optional request parameters. Defaults to `transaction_data`.
+- Omit a field to keep the default. Pass an empty list to disable that capability.
+
+DCQL options:
+
+- `credential_set_option_mode`: `all_satisfiable` returns every satisfiable option; `first_satisfiable_only` stops at the first satisfiable option.
+- `optional_credential_sets_mode`: `prefer_present`, `prefer_absent`, or `always_present_if_satisfiable`.
 
 `registerCredentials({ ... })` accepts:
 
@@ -63,9 +236,22 @@ Credential entry fields:
 - `vcts`: SD-JWT VCT list
 - `doctype`: mDOC document type
 - `holder_binding`: require holder binding
-- `claims`: optional claims definition
+- `claims`: credential claim values used for DCQL matching
 - `protocols`: supported protocols
 - `transaction_data_types`: transaction data descriptors
+
+Display field:
+
+- `path`: claim path, with strings, numbers, or `null` wildcards.
+- `display_name`: label shown to the user.
+- `display_value`: optional value override shown to the user.
+
+Transaction data type:
+
+- `type`: transaction data type URI.
+- `subtype`: optional subtype.
+- `claims`: claim display metadata for transaction data fields.
+- `ui_labels`: localized labels for transaction data UI keys.
 
 ## Selection Metadata (Get Request)
 

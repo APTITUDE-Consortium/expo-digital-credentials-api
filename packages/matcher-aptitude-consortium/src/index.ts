@@ -7,11 +7,16 @@ import type {
   AptitudeConsortiumCredentialSetOptionMode,
   AptitudeConsortiumFieldConfig,
   AptitudeConsortiumIcon,
-  AptitudeConsortiumLogLevel,
   AptitudeConsortiumLocalizedLabel,
   AptitudeConsortiumLocalizedValue,
-  AptitudeConsortiumOptionalCredentialSetsMode,
+  AptitudeConsortiumLogLevel,
   AptitudeConsortiumOpenId4VpConfig,
+  AptitudeConsortiumOpenId4VpQueryMethod,
+  AptitudeConsortiumOpenId4VpRequestParameter,
+  AptitudeConsortiumOpenId4VpRequestProtocol,
+  AptitudeConsortiumOpenId4VpResponseMode,
+  AptitudeConsortiumOpenId4VpResponseType,
+  AptitudeConsortiumOptionalCredentialSetsMode,
   AptitudeConsortiumPlanOptions,
   AptitudeConsortiumTransactionDataConfig,
   AptitudeConsortiumUiLabelConfig,
@@ -36,6 +41,11 @@ export type {
   AptitudeConsortiumLocalizedValue,
   AptitudeConsortiumOptionalCredentialSetsMode,
   AptitudeConsortiumOpenId4VpConfig,
+  AptitudeConsortiumOpenId4VpQueryMethod,
+  AptitudeConsortiumOpenId4VpRequestParameter,
+  AptitudeConsortiumOpenId4VpRequestProtocol,
+  AptitudeConsortiumOpenId4VpResponseMode,
+  AptitudeConsortiumOpenId4VpResponseType,
   AptitudeConsortiumPlanOptions,
   AptitudeConsortiumTransactionDataConfig,
   AptitudeConsortiumUiLabelConfig,
@@ -48,9 +58,48 @@ export type {
 export { loadMatcherBytes }
 export { getAptitudeSelection }
 
-export function encodeAptitudeConsortiumConfig(config: AptitudeConsortiumConfig): Uint8Array {
+export const DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG: Required<AptitudeConsortiumOpenId4VpConfig> = {
+  enabled: true,
+  supported_request_protocols: ['openid4vp-v1-unsigned', 'openid4vp-v1-signed', 'openid4vp-v1-multisigned'],
+  supported_response_modes: ['dc_api', 'dc_api.jwt'],
+  supported_response_types: ['vp_token'],
+  supported_query_methods: ['dcql_query'],
+  supported_request_parameters: ['transaction_data'],
+}
+
+export const DEFAULT_APTITUDE_CONSORTIUM_CONFIG: AptitudeConsortiumConfig = {
+  openid4vp: DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG,
+}
+
+export function withDefaultAptitudeConsortiumConfig(config: AptitudeConsortiumConfig = {}): AptitudeConsortiumConfig {
+  const openid4vp = config.openid4vp ?? {}
+
+  return {
+    ...config,
+    openid4vp: {
+      enabled: openid4vp.enabled ?? DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.enabled,
+      supported_request_protocols: openid4vp.supported_request_protocols ?? [
+        ...DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.supported_request_protocols,
+      ],
+      supported_response_modes: openid4vp.supported_response_modes ?? [
+        ...DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.supported_response_modes,
+      ],
+      supported_response_types: openid4vp.supported_response_types ?? [
+        ...DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.supported_response_types,
+      ],
+      supported_query_methods: openid4vp.supported_query_methods ?? [
+        ...DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.supported_query_methods,
+      ],
+      supported_request_parameters: openid4vp.supported_request_parameters ?? [
+        ...DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.supported_request_parameters,
+      ],
+    },
+  }
+}
+
+export function encodeAptitudeConsortiumConfig(config: AptitudeConsortiumConfig = {}): Uint8Array {
   const textEncoder = new TextEncoder()
-  return textEncoder.encode(JSON.stringify(config))
+  return textEncoder.encode(JSON.stringify(withDefaultAptitudeConsortiumConfig(config)))
 }
 
 export interface RegisterCredentialsOptions {
@@ -68,13 +117,8 @@ export interface RegisterCredentialsOptions {
   registerCompatType?: boolean
 }
 
-export async function registerCredentials(options: RegisterCredentialsOptions): Promise<void> {
-  const credentialsBytes =
-    options.credentialsBytes ??
-    (options.aptitudeConsortiumConfig ? encodeAptitudeConsortiumConfig(options.aptitudeConsortiumConfig) : null)
-  if (!credentialsBytes) {
-    throw new Error('Either aptitudeConsortiumConfig or credentialsBytes must be provided.')
-  }
+export async function registerCredentials(options: RegisterCredentialsOptions = {}): Promise<void> {
+  const credentialsBytes = options.credentialsBytes ?? encodeAptitudeConsortiumConfig(options.aptitudeConsortiumConfig)
   const matcherBytes = options.matcherBytes ?? (await loadMatcherBytes())
 
   return registerCredentialsRaw({
