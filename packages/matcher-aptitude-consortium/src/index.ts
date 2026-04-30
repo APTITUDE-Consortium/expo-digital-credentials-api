@@ -8,7 +8,6 @@ import type {
   AptitudeConsortiumFieldConfig,
   AptitudeConsortiumIcon,
   AptitudeConsortiumLocalizedLabel,
-  AptitudeConsortiumLocalizedValue,
   AptitudeConsortiumLogLevel,
   AptitudeConsortiumOpenId4VpConfig,
   AptitudeConsortiumOpenId4VpQueryMethod,
@@ -17,14 +16,19 @@ import type {
   AptitudeConsortiumOpenId4VpResponseMode,
   AptitudeConsortiumOpenId4VpResponseType,
   AptitudeConsortiumOptionalCredentialSetsMode,
+  AptitudeConsortiumPaymentScaConfig,
+  AptitudeConsortiumPaymentScaTypeConfig,
   AptitudeConsortiumPlanOptions,
   AptitudeConsortiumTransactionDataConfig,
-  AptitudeConsortiumUiLabelConfig,
+  AptitudeConsortiumTransactionDataTypesConfig,
+  AptitudeConsortiumTransactionDataValueType,
   ClaimsPathPointer,
 } from './schema'
 import type {
   AptitudeSelectionCredential,
   AptitudeSelectionMetadata,
+  AptitudeSelectionSlot,
+  AptitudeSelectionTransactionData,
   DigitalCredentialsRequestWithAptitudeSelection,
 } from './selection'
 import { getAptitudeSelection } from './selection'
@@ -38,7 +42,6 @@ export type {
   AptitudeConsortiumIcon,
   AptitudeConsortiumLogLevel,
   AptitudeConsortiumLocalizedLabel,
-  AptitudeConsortiumLocalizedValue,
   AptitudeConsortiumOptionalCredentialSetsMode,
   AptitudeConsortiumOpenId4VpConfig,
   AptitudeConsortiumOpenId4VpQueryMethod,
@@ -46,12 +49,17 @@ export type {
   AptitudeConsortiumOpenId4VpRequestProtocol,
   AptitudeConsortiumOpenId4VpResponseMode,
   AptitudeConsortiumOpenId4VpResponseType,
+  AptitudeConsortiumPaymentScaConfig,
+  AptitudeConsortiumPaymentScaTypeConfig,
   AptitudeConsortiumPlanOptions,
+  AptitudeConsortiumTransactionDataTypesConfig,
+  AptitudeConsortiumTransactionDataValueType,
   AptitudeConsortiumTransactionDataConfig,
-  AptitudeConsortiumUiLabelConfig,
   ClaimsPathPointer,
   AptitudeSelectionCredential,
   AptitudeSelectionMetadata,
+  AptitudeSelectionSlot,
+  AptitudeSelectionTransactionData,
   DigitalCredentialsRequestWithAptitudeSelection,
 }
 
@@ -69,6 +77,7 @@ export const DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG: Required<AptitudeCons
 
 export const DEFAULT_APTITUDE_CONSORTIUM_CONFIG: AptitudeConsortiumConfig = {
   openid4vp: DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG,
+  payment_sca: {},
 }
 
 export function withDefaultAptitudeConsortiumConfig(config: AptitudeConsortiumConfig = {}): AptitudeConsortiumConfig {
@@ -76,6 +85,7 @@ export function withDefaultAptitudeConsortiumConfig(config: AptitudeConsortiumCo
 
   return {
     ...config,
+    payment_sca: config.payment_sca ?? DEFAULT_APTITUDE_CONSORTIUM_CONFIG.payment_sca,
     openid4vp: {
       enabled: openid4vp.enabled ?? DEFAULT_APTITUDE_CONSORTIUM_OPENID4VP_CONFIG.enabled,
       supported_request_protocols: openid4vp.supported_request_protocols ?? [

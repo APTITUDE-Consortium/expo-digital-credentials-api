@@ -61,72 +61,96 @@ export interface AptitudeConsortiumPlanOptions {
   optional_credential_sets_mode?: AptitudeConsortiumOptionalCredentialSetsMode
 }
 
+export type AptitudeConsortiumTransactionDataValueType =
+  | 'boolean'
+  | 'frequency'
+  | 'image'
+  | 'iso_date'
+  | 'iso_time'
+  | 'iso_date_time'
+  | 'iso_currency'
+  | 'iso_currency_amount'
+  | 'label_only'
+  | 'mini_markdown'
+  | 'url'
+  | (string & {})
+
 export interface AptitudeConsortiumLocalizedLabel {
   /**
-   * Locale for the label (BCP-47).
+   * Locale for the label (BCP-47). Accepted for compatibility, not rendered.
    */
-  locale: string
+  locale?: string
   /**
-   * Label text.
+   * Display name text. Accepted for compatibility, not rendered.
    */
-  label: string
+  name?: string
+  /**
+   * Legacy alias for `name`.
+   */
+  label?: string
   /**
    * Optional description text.
    */
   description?: string
+  /**
+   * Optional formatter metadata. Accepted for compatibility, not rendered.
+   */
+  display_type?: AptitudeConsortiumTransactionDataValueType
 }
 
 export interface AptitudeConsortiumClaimConfig {
   /**
-   * Claim path pointer for this claim.
+   * Claim path pointer relative to `transaction_data.payload`.
    */
   path: ClaimsPathPointer
   /**
-   * Localized display labels for this claim.
+   * Whether this payload claim must be present.
+   */
+  mandatory?: boolean
+  /**
+   * Optional TS12 payload value constraint.
+   */
+  value_type?: AptitudeConsortiumTransactionDataValueType
+  /**
+   * Non-empty TS12 display metadata marks the claim as displayable for payload validation.
+   * Contents are accepted for compatibility and are not rendered as Credential Manager fields.
    */
   display?: AptitudeConsortiumLocalizedLabel[]
 }
 
-export interface AptitudeConsortiumLocalizedValue {
-  /**
-   * Locale for the value (BCP-47).
-   */
-  locale: string
-  /**
-   * Value text.
-   */
-  value: string
-}
-
-export interface AptitudeConsortiumUiLabelConfig {
-  /**
-   * Label key identifier.
-   */
-  key: string
-  /**
-   * Localized values for the key.
-   */
-  values?: AptitudeConsortiumLocalizedValue[]
-}
-
 export interface AptitudeConsortiumTransactionDataConfig {
   /**
-   * Transaction data type.
+   * Transaction data type URN.
    */
   type: string
   /**
-   * Optional transaction data subtype.
-   */
-  subtype?: string
-  /**
-   * Claims included in transaction data.
+   * Claim metadata used to validate `transaction_data.payload`.
    */
   claims?: AptitudeConsortiumClaimConfig[]
-  /**
-   * UI label mappings for transaction data.
-   */
-  ui_labels?: AptitudeConsortiumUiLabelConfig[]
 }
+
+export type AptitudeConsortiumTransactionDataTypesConfig =
+  | Record<string, Omit<AptitudeConsortiumTransactionDataConfig, 'type'>>
+  | AptitudeConsortiumTransactionDataConfig[]
+
+export interface AptitudeConsortiumPaymentScaTypeConfig {
+  /**
+   * Payee/merchant display path in the full transaction data object.
+   */
+  payee: ClaimsPathPointer
+  /**
+   * Amount display path in the full transaction data object.
+   */
+  amount: ClaimsPathPointer
+  /**
+   * Optional extra context shown in payment UI.
+   */
+  additional_info?: ClaimsPathPointer
+}
+
+export type AptitudeConsortiumPaymentScaConfig =
+  | Record<string, AptitudeConsortiumPaymentScaTypeConfig>
+  | Array<AptitudeConsortiumPaymentScaTypeConfig & { type: string }>
 
 export type AptitudeConsortiumIcon = string | number[]
 
@@ -175,7 +199,7 @@ export interface AptitudeConsortiumCredentialConfig {
    */
   fields?: AptitudeConsortiumFieldConfig[]
   /**
-   * Optional matcher-specific metadata.
+   * Optional credential metadata. Standard claim display names may be read from this object.
    */
   metadata?: unknown
   /**
@@ -199,13 +223,9 @@ export interface AptitudeConsortiumCredentialConfig {
    */
   claims?: unknown
   /**
-   * Supported protocols for this credential.
-   */
-  protocols?: string[]
-  /**
    * Transaction data types supported by this credential.
    */
-  transaction_data_types?: AptitudeConsortiumTransactionDataConfig[]
+  transaction_data_types?: AptitudeConsortiumTransactionDataTypesConfig
 }
 
 export interface AptitudeConsortiumConfig {
@@ -221,6 +241,10 @@ export interface AptitudeConsortiumConfig {
    * DCQL planning options.
    */
   dcql?: AptitudeConsortiumPlanOptions
+  /**
+   * Dedicated payment/SCA display mappings.
+   */
+  payment_sca?: AptitudeConsortiumPaymentScaConfig
   /**
    * Matcher log level.
    */
